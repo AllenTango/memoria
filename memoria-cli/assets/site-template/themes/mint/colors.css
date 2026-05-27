@@ -1,0 +1,62 @@
+/* ── Mint Color Variables ─────────────────────────────────────────── */
+/* 鲜活多巴胺风格: 荧光薄荷绿 + 橙红撞色，活力四射 */
+:root {
+  /* 背景色系 */
+  --mint-bg:       #EEFFF4;  /* 极浅薄荷白 */
+  --mint-surface:  #C8FFE0;  /* 亮薄荷绿 */
+  --mint-border:   #A8F4C8;  /* 翠绿边框 */
+
+  /* 文字色系 */
+  --mint-text:         #061A1C;  /* 深墨绿（主文字） */
+  --mint-text-muted:   #2A5A5E;  /* 灰青绿（次要文字） */
+  --mint-text-light:   #5A8A8E;  /* 浅灰青 */
+
+  /* 强调色系 */
+  --mint-accent:       #FF4D00;  /* 熔岩橙（主强调，最强撞色） */
+  --mint-accent-warm:  #FF6B35;  /* 活力橙 */
+  --mint-accent-cool:  #0077B6;  /* 深蓝（冷调互补） */
+  --mint-accent-pink:  #E91E8C;  /* 荧光粉 */
+  --mint-accent-green: #00D68F;  /* 霓虹绿 */
+  --mint-accent-red:   #E63946;  /* 错误红 */
+  --mint-heading:      #FF4D00;  /* 标题（同主强调） */
+
+  /* UI 色 */
+  --mint-link:         #0077B6;  /* 链接（深蓝） */
+  --mint-selection:    rgba(255, 77, 0, 0.22);
+
+  /* 导航背景 */
+  --mint-nav-bg:       rgba(238, 255, 244, 0.0);   /* 透明（桌面） */
+  --mint-nav-mobile:   #061A1C;    /* 深墨绿（移动端Tab栏底色，呼应文字色） */
+  --mint-tab-inactive: #5A8A8E;    /* 灰青绿（未激活Tab图标） */
+  --mint-caption-bg:   rgba(6, 26, 28, 0.78);
+  --mint-overlay-btn:  rgba(255, 77, 0, 0.9);
+
+  /* ── Semantic Aliases ───────────────────────────────────────────── */
+
+  /* Core */
+  --color-bg:           var(--mint-bg);
+  --color-surface:      var(--mint-surface);
+  --color-text:         var(--mint-text);
+  --color-text-muted:   var(--mint-text-muted);
+
+  /* Accent */
+  --color-accent:       var(--mint-accent);
+  --color-accent-warm:  var(--mint-accent-warm);
+  --color-accent-cool:  var(--mint-accent-cool);
+  --color-accent-pink:  var(--mint-accent-pink);
+  --color-accent-green: var(--mint-accent-green);
+  --color-accent-red:   var(--mint-accent-red);
+  --color-heading:      var(--mint-heading);
+
+  /* UI */
+  --color-border:       var(--mint-border);
+  --color-link:         var(--mint-link);
+  --color-selection:    var(--mint-selection);
+
+  /* Navigation */
+  --color-nav-bg:       var(--mint-nav-bg);
+  --color-nav-mobile:   var(--mint-nav-mobile);
+  --color-tab-inactive: var(--mint-tab-inactive);
+  --color-caption-bg:   var(--mint-caption-bg);
+  --color-overlay-btn:  var(--mint-overlay-btn);
+}

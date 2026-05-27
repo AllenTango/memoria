@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+.themerc
+*.log
+.DS_Store

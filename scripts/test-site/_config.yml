@@ -1,0 +1,6 @@
+site:
+  name: "Memoria Test Site"
+  description: "开发者测试站点"
+  author: "developer"
+  url: "http://localhost"
+theme: dracula

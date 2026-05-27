@@ -1,0 +1,44 @@
+/* ── Dracula Color Variables ────────────────────────────────────────── */
+:root {
+  /* Dracula Core Colors */
+  --dracula-background:    #282a36;
+  --dracula-current-line:  #44475a;
+  --dracula-foreground:    #f8f8f2;
+  --dracula-comment:       #6272a4;
+  --dracula-cyan:          #8be9fd;
+  --dracula-green:         #50fa7b;
+  --dracula-orange:        #ffb86c;
+  --dracula-pink:          #ff79c6;
+  --dracula-purple:        #bd93f9;
+  --dracula-red:           #ff5555;
+  --dracula-yellow:        #f1fa8c;
+  --dracula-selection:      rgba(255, 121, 198, 0.3);
+
+  /* ── Semantic Aliases ───────────────────────────────────────────── */
+
+  /* Core */
+  --color-bg:           var(--dracula-background);
+  --color-surface:      var(--dracula-current-line);
+  --color-text:        var(--dracula-foreground);
+  --color-text-muted:  var(--dracula-comment);
+
+  /* Accent */
+  --color-accent:       var(--dracula-purple);   /* 主强调（链接/hover/边框） */
+  --color-accent-warm:  var(--dracula-orange);   /* 暖调（代码/日期/描述） */
+  --color-accent-cool:  var(--dracula-cyan);      /* 冷调（备用） */
+  --color-accent-pink:  var(--dracula-pink);     /* 品牌/特殊 */
+  --color-accent-green: var(--dracula-green);    /* 成功 */
+  --color-accent-red:   var(--dracula-red);      /* 错误 */
+  --color-heading:      var(--dracula-yellow);   /* 标题/strong 文字 */
+
+  /* UI */
+  --color-border:       var(--dracula-current-line);
+  --color-link:         var(--dracula-cyan);
+  --color-selection:    var(--dracula-selection);
+
+  /* Navigation */
+  --color-nav-bg:       rgba(40, 42, 54, 0.95);
+  --color-nav-mobile:   rgba(40, 42, 54, 0.97);
+  --color-caption-bg:   rgba(40, 42, 54, 0.8);
+  --color-overlay-btn:  rgba(68, 71, 90, 0.8);
+}

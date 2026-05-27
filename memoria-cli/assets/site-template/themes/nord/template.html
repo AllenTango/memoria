@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>{{PAGE_TITLE}}</title>
+  <link rel="stylesheet" href="/layout.css" />
+  <link rel="stylesheet" href="/colors.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/dracula.min.css" />
+</head>
+<body>
+  <!-- Desktop Header Nav -->
+  <header class="site-header" id="siteHeader">
+    <a href="/" class="nav-brand">Memoria</a>
+    <nav class="nav-links">
+      <a href="/" class="nav-link{{HOME_ACTIVE}}">首页</a>
+      <a href="/blogs.html" class="nav-link{{BLOGS_ACTIVE}}">随笔</a>
+      <a href="/vlogs.html" class="nav-link{{VLOGS_ACTIVE}}">影像</a>
+      <a href="/photos.html" class="nav-link{{PHOTO_ACTIVE}}">相册</a>
+      <a href="/about.html" class="nav-link{{ABOUT_ACTIVE}}">关于</a>
+    </nav>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content" id="mainContent">
+    {{PAGE_CONTENT}}
+  </main>
+
+  <!-- Mobile Bottom Tab Navigation (icon-only) -->
+  <nav class="bottom-nav" id="bottomNav">
+    <a href="/" class="nav-tab{{HOME_ACTIVE}}" data-page="home">
+      <i data-lucide="home"></i>
+    </a>
+    <a href="/blogs.html" class="nav-tab{{BLOGS_ACTIVE}}" data-page="blogs">
+      <i data-lucide="align-left"></i>
+    </a>
+    <a href="/vlogs.html" class="nav-tab{{VLOGS_ACTIVE}}" data-page="vlogs">
+      <i data-lucide="play-circle"></i>
+    </a>
+    <a href="/photos.html" class="nav-tab{{PHOTO_ACTIVE}}" data-page="photo">
+      <i data-lucide="image"></i>
+    </a>
+    <a href="/about.html" class="nav-tab{{ABOUT_ACTIVE}}" data-page="about">
+      <i data-lucide="user"></i>
+    </a>
+  </nav>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close" aria-label="关闭">✕</button>
+    <button class="lightbox-prev" onclick="event.stopPropagation(); lightboxNav(-1)">‹</button>
+    <div class="lightbox-content" id="lightboxContent"></div>
+    <button class="lightbox-next" onclick="event.stopPropagation(); lightboxNav(1)">›</button>
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.lucide) lucide.createIcons();
+      document.querySelectorAll('pre code').forEach(function(block) {
+        if (window.hljs) hljs.highlightElement(block);
+      });
+      document.addEventListener('keydown', function(e) {
+        var lb = document.getElementById('lightbox');
+        if (!lb || !lb.classList.contains('open')) return;
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') lightboxNav(-1);
+        if (e.key === 'ArrowRight') lightboxNav(1);
+      });
+
+      /* ── Home tag filter ─────────────────────────────────── */
+      var filterBar = document.getElementById('tagFilterBar');
+      if (filterBar) {
+        filterBar.addEventListener('click', function(e) {
+          var btn = e.target.closest('.tag-filter-btn');
+          if (!btn) return;
+          var tag = btn.dataset.tag;
+          filterBar.querySelectorAll('.tag-filter-btn').forEach(function(b) {
+            b.classList.toggle('active', b === btn);
+          });
+          document.querySelectorAll('[data-item-tags]').forEach(function(item) {
+            var tags = item.dataset.itemTags ? item.dataset.itemTags.split(',') : [];
+            item.classList.toggle('hidden', tag !== 'all' && !tags.includes(tag));
+          });
+        });
+      }
+    });
+
+    /* ── Lightbox ─────────────────────────────────────────────── */
+    var allPhotos = window.__memoriaPhotos = window.__memoriaPhotos || [];
+    var currentPhoto = 0;
+
+    function openLightbox(idx) {
+      currentPhoto = idx;
+      var lb = document.getElementById('lightbox');
+      var content = document.getElementById('lightboxContent');
+      var caption = document.getElementById('lightboxCaption');
+      if (!lb || !content) return;
+      content.innerHTML = '<img src="' + allPhotos[idx].url + '" alt="" loading="lazy">';
+      caption.textContent = allPhotos[idx].caption || '';
+      lb.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeLightbox() {
+      var lb = document.getElementById('lightbox');
+      if (lb) lb.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    function lightboxNav(dir) {
+      currentPhoto = (currentPhoto + dir + allPhotos.length) % allPhotos.length;
+      var content = document.getElementById('lightboxContent');
+      var caption = document.getElementById('lightboxCaption');
+      content.innerHTML = '<img src="' + allPhotos[currentPhoto].url + '" alt="" loading="lazy">';
+      caption.textContent = allPhotos[currentPhoto].caption || '';
+    }
+    window.openLightbox = openLightbox;
+    window.closeLightbox = closeLightbox;
+    window.lightboxNav = lightboxNav;
+
+    function setPhotoView(view) {
+      document.querySelectorAll('.view-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.view === view);
+      });
+      var wall = document.getElementById('photoWall');
+      var album = document.getElementById('albumView');
+      if (view === 'album') {
+        if (wall) wall.style.display = 'none';
+        if (album) album.style.display = '';
+      } else {
+        if (wall) wall.style.display = '';
+        var grid = document.getElementById('photoGrid');
+        if (grid) grid.className = 'photo-wall-grid ' + view;
+        if (album) album.style.display = 'none';
+      }
+    }
+    window.setPhotoView = setPhotoView;
+
+    /* ── Mobile sentinel: show '已经到底啦' briefly then hide ── */
+    function initMobileSentinel() {
+      var sentinel = document.querySelector('.scroll-sentinel');
+      if (!sentinel) return;
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            sentinel.textContent = '已经到底啦！';
+            sentinel.classList.add('scroll-no-more');
+            setTimeout(function() {
+              sentinel.style.display = 'none';
+              observer.disconnect();
+            }, 2000);
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: '200px' });
+      observer.observe(sentinel);
+    }
+    initMobileSentinel();
+  </script>
+</body>
+</html>

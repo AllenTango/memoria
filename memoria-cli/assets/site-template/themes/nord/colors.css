@@ -1,0 +1,62 @@
+/* ── Nord Color Variables ────────────────────────────────────────── */
+/* 北欧清新风格: 冷调薄荷白 + 强青绿强调，克制而精致 */
+:root {
+  /* 背景色系 */
+  --nord-bg:       #EEF8F6;  /* 冰薄荷白 */
+  --nord-surface:  #E0F2EE;  /* 淡青绿灰 */
+  --nord-border:   #C8E4DE;  /* 柔绿边框 */
+
+  /* 文字色系 */
+  --nord-text:         #1A2F38;  /* 深松石蓝（主文字） */
+  --nord-text-muted:   #5A7A82;  /* 灰青（次要文字） */
+  --nord-text-light:   #8AAAB2;  /* 浅灰青 */
+
+  /* 强调色系 */
+  --nord-accent:       #00A896;  /* 北欧青绿（主强调） */
+  --nord-accent-warm:  #E8A87C;  /* 暖琥珀色 */
+  --nord-accent-cool:  #0077B6;  /* 深蓝（冷调） */
+  --nord-accent-pink:  #E0919A;  /* 玫瑰粉 */
+  --nord-accent-green: #2ECC71;  /* 活力绿 */
+  --nord-accent-red:   #E74C3C;  /* 错误红 */
+  --nord-heading:      #00A896;  /* 标题（同主强调） */
+
+  /* UI 色 */
+  --nord-link:         #0077B6;  /* 链接（深蓝） */
+  --nord-selection:    rgba(0, 168, 150, 0.25);
+
+  /* 导航背景 */
+  --nord-nav-bg:       rgba(238, 248, 246, 0.0);   /* 透明（桌面） */
+  --nord-nav-mobile:   #00796B;     /* 深青绿（移动端Tab栏底色） */
+  --nord-tab-inactive: #B2DFDB;    /* 浅青绿（未激活Tab图标） */
+  --nord-caption-bg:   rgba(26, 47, 56, 0.78);
+  --nord-overlay-btn:  rgba(0, 168, 150, 0.9);
+
+  /* ── Semantic Aliases ───────────────────────────────────────────── */
+
+  /* Core */
+  --color-bg:           var(--nord-bg);
+  --color-surface:      var(--nord-surface);
+  --color-text:         var(--nord-text);
+  --color-text-muted:   var(--nord-text-muted);
+
+  /* Accent */
+  --color-accent:       var(--nord-accent);
+  --color-accent-warm:  var(--nord-accent-warm);
+  --color-accent-cool:  var(--nord-accent-cool);
+  --color-accent-pink:  var(--nord-accent-pink);
+  --color-accent-green: var(--nord-accent-green);
+  --color-accent-red:   var(--nord-accent-red);
+  --color-heading:      var(--nord-heading);
+
+  /* UI */
+  --color-border:       var(--nord-border);
+  --color-link:         var(--nord-link);
+  --color-selection:    var(--nord-selection);
+
+  /* Navigation */
+  --color-nav-bg:       var(--nord-nav-bg);
+  --color-nav-mobile:   var(--nord-nav-mobile);
+  --color-tab-inactive: var(--nord-tab-inactive);
+  --color-caption-bg:   var(--nord-caption-bg);
+  --color-overlay-btn:  var(--nord-overlay-btn);
+}

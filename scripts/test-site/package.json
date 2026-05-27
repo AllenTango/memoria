@@ -1,0 +1,13 @@
+{
+  "name": "memoria-test-site",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "memoria generate",
+    "server": "memoria server",
+    "clean": "memoria clean"
+  },
+  "dependencies": {
+    "memoria-core": "^1.0.0"
+  }
+}

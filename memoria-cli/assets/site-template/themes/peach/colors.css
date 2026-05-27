@@ -1,0 +1,60 @@
+/* ── Peach Color Variables ────────────────────────────────────────── */
+/* 温暖杂志风: 奶油杏色 + 深棕对比，精致有机感 */
+:root {
+  /* 背景色系 */
+  --peach-bg:       #FDF0E8;  /* 奶油杏（页面主背景） */
+  --peach-surface:  #FAE5D8;  /* 柔杏色（卡片背景） */
+  --peach-border:   #EDD5C4;  /* 淡杏边框 */
+
+  /* 文字色系 */
+  --peach-text:         #2C1810;  /* 深可可棕（主文字） */
+  --peach-text-muted:   #7A5548;  /* 暖灰棕（次要文字） */
+  --peach-text-light:   #A88980;  /* 浅暖灰 */
+
+  /* 强调色系 */
+  --peach-accent:       #C4622D;  /* 赤陶橙（主强调） */
+  --peach-accent-warm:  #8B4513;  /* 深棕（暖调强调） */
+  --peach-accent-cool:  #4A6FA5;  /* 雾霾蓝（冷调） */
+  --peach-accent-pink:  #D4627A;  /* 玫瑰粉 */
+  --peach-accent-green: #5A8F5A;  /* 橄榄绿 */
+  --peach-accent-red:   #B83B3B;  /* 错误红 */
+  --peach-heading:      #C4622D;  /* 标题（同主强调） */
+
+  /* UI 色 */
+  --peach-link:         #4A6FA5;  /* 链接色（雾霾蓝） */
+  --peach-selection:    rgba(196, 98, 45, 0.28);
+
+  /* 导航背景 */
+  --peach-nav-bg:       rgba(253, 240, 232, 0.0);  /* 透明（桌面） */
+  --peach-nav-mobile:   rgba(232, 170, 140, 0.95);  /* 深杏色（移动端Tab） */
+  --peach-caption-bg:   rgba(44, 24, 16, 0.75);
+  --peach-overlay-btn:  rgba(196, 98, 45, 0.88);
+
+  /* ── Semantic Aliases ───────────────────────────────────────────── */
+
+  /* Core */
+  --color-bg:           var(--peach-bg);
+  --color-surface:      var(--peach-surface);
+  --color-text:         var(--peach-text);
+  --color-text-muted:   var(--peach-text-muted);
+
+  /* Accent */
+  --color-accent:       var(--peach-accent);
+  --color-accent-warm:  var(--peach-accent-warm);
+  --color-accent-cool:  var(--peach-accent-cool);
+  --color-accent-pink:  var(--peach-accent-pink);
+  --color-accent-green: var(--peach-accent-green);
+  --color-accent-red:   var(--peach-accent-red);
+  --color-heading:      var(--peach-heading);
+
+  /* UI */
+  --color-border:       var(--peach-border);
+  --color-link:         var(--peach-link);
+  --color-selection:    var(--peach-selection);
+
+  /* Navigation */
+  --color-nav-bg:       var(--peach-nav-bg);
+  --color-nav-mobile:   var(--peach-nav-mobile);
+  --color-caption-bg:   var(--peach-caption-bg);
+  --color-overlay-btn:  var(--peach-overlay-btn);
+}
