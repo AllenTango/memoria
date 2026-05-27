@@ -8,7 +8,7 @@
 
 ## 新建文章
 
-### `npm run new:blog` — 新建博客
+### `memoria new blog` — 新建博客
 
 交互式创建博客文章：
 
@@ -23,7 +23,7 @@
 
 ---
 
-### `npm run new:vlog` — 新建视频记录
+### `memoria new vlog` — 新建视频记录
 
 交互式创建视频记录：
 
@@ -41,7 +41,7 @@
 
 ---
 
-### `npm run new:photo` — 新建相册
+### `memoria new photo` — 新建相册
 
 交互式创建相册：
 
@@ -60,10 +60,10 @@
 
 ## 构建与预览
 
-### `npm run build` — 构建网站
+### `memoria generate` — 构建网站
 
 ```bash
-npm run build
+memoria generate
 ```
 
 - 使用当前主题（或 `.themerc` 中保存的主题）构建全站
@@ -79,10 +79,10 @@ npm run build
 # memoria generate --theme nord
 ```
 
-### `npm run dev` — 监听模式
+### `memoria server` — 监听模式
 
 ```bash
-npm run dev
+memoria server
 ```
 
 监听 `content/` 目录，文件变动自动重新构建，适合内容创作阶段使用。
@@ -91,35 +91,35 @@ npm run dev
 
 ## 主题切换
 
-### `npm run theme` — 交互式切换
+### `memoria theme` — 交互式切换
 
 ```bash
-npm run theme
+memoria theme
 ```
 
 显示所有可用主题供选择，当前选择写入 `.themerc` 文件。
 
 内置主题：`dracula`（默认）、`nord`、`peach`、`mint`，init 后位于站点 `themes/` 目录。
 
-切换后下次 `npm run build` 自动使用新主题。
+切换后下次 `memoria generate` 自动使用新主题。
 
 ---
 
 ## 打包与推送
 
-### `npm run bundle` — 打包
+### `memoria bundle` — 打包
 
 ```bash
-npm run bundle
+memoria bundle
 ```
 
-- 先执行 `npm run build`
+- 先执行 `memoria generate`
 - 将 `dist/` 打包成 `memoria-YYYYMMDD.zip`
 
-### `npm run deploy` — 推送到 GitHub
+### `memoria deploy` — 推送到 GitHub
 
 ```bash
-npm run deploy
+memoria deploy
 ```
 
 - 提交当前更改

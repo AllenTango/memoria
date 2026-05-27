@@ -1,31 +1,76 @@
 # Memoria
 
-一款面向个人的轻量级静态博客系统，支持 **文章（blogs）**、**视频日志（vlogs）**、**相册（photos）** 三种内容形态，主题系统与内容管理分离。
+轻量级静态博客系统，支持 **文章（blogs）**、**视频日志（vlogs）**、**相册（photos）** 三种内容形态，开箱即用。
 
 ---
 
-## 快速开始
+## ⚠️ 当前状态
 
-### 1. 创建新站点
+**尚未发布到 npm（预发布版本）**
+
+当前为本地开发/测试阶段，发布后会可通过 `npm install -g memoria` 安装。
+
+---
+
+## 安装与快速开始
+
+### 方式一：本地开发（当前可用）
 
 ```bash
-memoria init my-site
-cd my-site
+# 1. 克隆仓库
+git clone https://github.com/AllenTango/memoria.git
+cd memoria
+
+# 2. 链接为全局命令
+npm link
+
+# 3. 创建站点
+memoria init my-blog
+cd my-blog
+
+# 4. 开始使用
+memoria generate        # 构建到 dist/
+memoria server          # 本地预览（http://localhost:3000）
 ```
 
-### 2. 编写内容
+### 方式二：直接使用（发布后）
 
-在 `content/` 目录下添加 Markdown 文件：
-
-```
-content/
-├── about.md                # 关于页面
-├── blogs/                  # 博客文章
-├── vlogs/                  # 视频日志
-└── photos/                 # 相册
+```bash
+npm install -g memoria
+memoria init my-blog
+cd my-blog
+memoria generate
+memoria server
 ```
 
-每个文件使用 frontmatter：
+---
+
+## 创建内容
+
+### 新建文章
+
+```bash
+memoria new blog "我的第一篇文章"
+# 或手动创建 Markdown 文件到 content/blogs/
+```
+
+### 新建视频日志
+
+```bash
+memoria new vlog "第一次 vlog"
+# 或手动创建到 content/vlogs/
+```
+
+### 新建相册
+
+```bash
+memoria new photo "旅行相册"
+# 或手动创建到 content/photos/
+```
+
+### frontmatter 格式
+
+每个内容文件开头使用 YAML frontmatter：
 
 ```markdown
 ---
@@ -36,18 +81,16 @@ date: "2026-01-01"
 正文内容...
 ```
 
-### 3. 构建并预览
-
-```bash
-memoria generate        # 构建静态文件到 dist/
-memoria server       # 启动本地预览服务器
-```
-
 ---
 
-## 内置主题
+## 主题切换
 
-`memoria init` 时可选择以下主题：
+```bash
+memoria theme           # 交互式选择
+memoria theme list      # 列出所有可用主题
+```
+
+内置主题：
 
 | 主题 | 风格 |
 |------|------|
@@ -56,50 +99,59 @@ memoria server       # 启动本地预览服务器
 | **nord** | 北欧灰蓝 |
 | **peach** | 蜜桃粉 |
 
-换主题：`memoria theme`
-
 ---
 
-## 项目结构
+## 部署
 
-```
-memoria/
-├── memoria-core/          # 核心引擎（主题 + 渲染逻辑）
-│   ├── src/
-│   ├── themes/dracula/
-│   └── package.json
-├── memoria-cli/          # CLI 工具（init / generate / server 等）
-│   ├── bin/
-│   ├── lib/
-│   ├── assets/site-template/
-│   └── package.json
-├── scripts/              # 开发辅助脚本
-│   ├── test-site/        # 集成测试用站点
-│   ├── test-theme.sh     # 主题验证脚本
-│   └── smoke-test.sh     # 冒烟测试脚本
-├── docs/                 # 项目文档
-├── .github/              # GitHub Actions 配置
-├── DEVELOPER.md          # 开发者文档
-└── README.md
+```bash
+memoria deploy          # 交互式选择部署平台
 ```
 
----
-
-## 开发者文档
-
-- [DEVELOPER.md](./DEVELOPER.md) — 架构原理、主题开发、CLI 扩展
-- [docs/](./docs/) — 更多开发细节
+支持的部署平台：
+- GitHub Pages（自动配置 GitHub Actions）
+- Vercel / Netlify（输出构建命令）
 
 ---
 
-## 命令行工具
+## 命令一览
 
 | 命令 | 说明 |
 |------|------|
-| `memoria init` | 初始化新站点（复制 site-template） |
-| `memoria generate` | 构建静态文件 |
-| `memoria server` | 启动预览服务器 |
+| `memoria init <name>` | 创建新站点 |
+| `memoria generate` | 构建静态文件到 dist/ |
+| `memoria server` | 本地预览（热重载） |
+| `memoria clean` | 清理 dist/ |
 | `memoria theme` | 切换主题 |
-| `memoria new blog` | 新建博客文章 |
-| `memoria new vlog` | 新建视频日志 |
-| `memoria new photo` | 新建相册条目 |
+| `memoria new blog/vlog/photo <title>` | 新建内容 |
+| `memoria deploy` | 部署站点 |
+| `memoria help` | 帮助 |
+
+---
+
+## 项目结构（用户站点）
+
+```
+my-blog/
+├── content/              # 内容（blogs/vlogs/photos）
+│   ├── about.md
+│   ├── blogs/
+│   ├── vlogs/
+│   └── photos/
+├── themes/               # 主题（可自定义）
+├── public/               # 静态资源（图片/视频）
+├── dist/                 # 构建输出（可部署）
+├── _config.yml           # 站点配置
+├── package.json
+└── .themerc             # 当前主题
+```
+
+---
+
+## 文档
+
+- [快速开始](./docs/getting-started.md)
+- [内容创作](./docs/content-guide.md)
+- [主题开发](./docs/theme-guide.md)
+- [部署指南](./docs/deploy-guide.md)
+- [CLI 参考](./docs/cli-reference.md)
+- [开发者文档](./docs/developer.md)

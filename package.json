@@ -1,0 +1,27 @@
+{
+  "name": "memoria",
+  "version": "1.0.0",
+  "description": "轻量级静态博客系统，支持文章/视频/相册三种内容形态",
+  "main": "src/index.js",
+  "bin": {
+    "memoria": "bin/memoria.js"
+  },
+  "scripts": {
+    "build": "node src/index.js",
+    "dev": "node src/index.js --watch"
+  },
+  "keywords": [
+    "static-site-generator",
+    "blog",
+    "memoria"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "marked": "^12.0.0",
+    "gray-matter": "^4.0.3",
+    "highlight.js": "^11.9.0"
+  }
+}

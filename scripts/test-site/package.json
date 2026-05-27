@@ -7,7 +7,5 @@
     "server": "memoria server",
     "clean": "memoria clean"
   },
-  "dependencies": {
-    "memoria-core": "^1.0.0"
-  }
+  "dependencies": {}
 }

@@ -16,13 +16,13 @@
 
 ```bash
 # 交互式选择
-npm run theme
+memoria theme
 
 # 直接指定主题构建
 memoria generate --theme nord  # 或交互式选择: memoria theme
 ```
 
-主题选择会写入 `.themerc` 文件，后续 `npm run build` 自动使用该主题。
+主题选择会写入 `.themerc` 文件，后续 `memoria generate` 自动使用该主题。
 
 ## 主题结构
 
@@ -109,7 +109,7 @@ color: var(--color-text);
 
 ```bash
 # 交互式选择
-npm run theme
+memoria theme
 
 # 或手动写入
 echo "my-theme" > .themerc
@@ -167,7 +167,7 @@ Green:        #00D68F
 ## 验证主题
 
 ```bash
-npm run build     # 使用当前 .themerc 中的主题构建
+memoria generate     # 使用当前 .themerc 中的主题构建
 memoria generate --theme nord   # 指定 nord 主题构建并预览
 ```
 

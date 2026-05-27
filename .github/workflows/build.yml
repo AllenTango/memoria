@@ -1,20 +1,21 @@
-name: Build and Deploy
+name: CI / Build and Publish
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build Site
+  # ── Test: Verify memoria works ──────────────────────────────────
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -23,56 +24,49 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build static site
+      - name: Build site
         run: npm run build
 
-      - name: Upload build artifacts
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist/
+      - name: Verify dist/
+        run: test -d dist && echo "✅ dist/ created"
 
-  build-all-themes:
-    name: Build All Themes
+      - name: Link CLI
+        run: npm link
+
+      - name: Test CLI help
+        run: memoria help | grep -q "Memoria"
+
+      - name: Test CLI version
+        run: memoria --version
+
+      - name: Smoke test
+        run: bash scripts/smoke-test.sh
+
+  # ── Publish: on git tag only ────────────────────────────────────
+  publish:
+    needs: [test]
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build all themes and package
-        run: |
-          mkdir -p dist-themes
-          for theme in dracula nord peach mint; do
-            echo "Building theme: $theme"
-            node src/index.js --theme "$theme"
-            zip -r "dist-themes/memoria-$theme.zip" dist/
-            echo "✅ Built memoria-$theme.zip"
-          done
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
 
-      - name: Upload theme packages
-        uses: actions/upload-pages-artifact@v3
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-          path: dist-themes/
-
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: [build, build-all-themes]
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

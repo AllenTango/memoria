@@ -1,12 +1,12 @@
 # CLI 命令参考
 
-Memoria 提供以下 CLI 命令，均通过 `npm run` 执行。
+Memoria CLI 命令，使用 `memoria` 命令执行。
 
 ---
 
 ## 新建内容
 
-### `npm run new:blog`
+### `memoria new blog`
 
 交互式创建博客文章：
 
@@ -21,7 +21,7 @@ Memoria 提供以下 CLI 命令，均通过 `npm run` 执行。
 
 ---
 
-### `npm run new:vlog`
+### `memoria new vlog`
 
 交互式创建视频记录：
 
@@ -39,7 +39,7 @@ Memoria 提供以下 CLI 命令，均通过 `npm run` 执行。
 
 ---
 
-### `npm run new:photo`
+### `memoria new photo`
 
 交互式创建相册：
 
@@ -58,13 +58,13 @@ Memoria 提供以下 CLI 命令，均通过 `npm run` 执行。
 
 ## 构建
 
-### `npm run build`
+### `memoria generate`
 
 使用当前主题（或 `.themerc` 中保存的主题）构建全站，输出到 `dist/`。
 
 ```
-npm run build          # 使用当前主题构建
-# 或指定主题: node node_modules/memoria-core/src/index.js --theme <name>
+memoria generate          # 使用当前主题构建
+# 或指定主题: memoria generate --theme <name>
 ```
 
 构建产物：
@@ -75,19 +75,19 @@ npm run build          # 使用当前主题构建
 
 ---
 
-### `npm run dev`
+### `memoria server`
 
 监听 `content/` 目录，文件变动自动重新构建，适合内容创作阶段使用。
 
 ```bash
-npm run dev
+memoria server
 ```
 
 ---
 
 ## 主题
 
-### `npm run theme`
+### `memoria theme`
 
 交互式切换主题，显示所有可用主题供选择，当前选择写入 `.themerc` 文件。
 
@@ -95,11 +95,11 @@ npm run dev
 
 ## 打包与部署
 
-### `npm run bundle`
+### `memoria bundle`
 
-先执行 `npm run build`，然后将 `dist/` 打包为 `memoria-YYYYMMDD.zip`。
+先执行 `memoria generate`，然后将 `dist/` 打包为 `memoria-YYYYMMDD.zip`。
 
-### `npm run deploy`
+### `memoria deploy`
 
 将当前更改提交并推送到 GitHub `main` 分支，触发 GitHub Actions 自动构建部署。
 
