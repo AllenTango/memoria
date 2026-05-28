@@ -107,6 +107,38 @@ memoria server
 
 ---
 
+## 升级与同步
+
+### `memoria upgrade`
+
+升级 memoria 全局 CLI，等同于 `npm update -g memoria`。无需在站点目录执行。
+
+```bash
+memoria upgrade
+```
+
+---
+
+### `memoria sync`
+
+将 memoria 源码的最新内置主题同步到当前站点的 `themes/` 目录。**必须在站点目录下执行**。
+
+```bash
+memoria sync
+```
+
+**同步内容：** 内置主题（dracula / mint / nord / peach）的 `template.html`、`colors.css`、`layout.css`。
+
+**交互确认：**
+- 若当前使用的主题或已被修改的内置主题将被覆盖，系统会提示确认
+- 当前使用的主题被修改过 → `[y/N]`（默认否）
+- 其他已修改的内置主题存在 → `[Y/n]`（默认是）
+- 首次同步（站点无内置主题）→ 直接同步无需确认
+
+同步完成后运行 `memoria generate` 重新构建站点。
+
+---
+
 ## 实现原理
 
 所有命令位于 `memoria/lib/cli-content.js`，使用 Node.js 原生 `readline` 模块实现交互式输入，不依赖外部库。

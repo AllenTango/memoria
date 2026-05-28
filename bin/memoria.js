@@ -16,6 +16,7 @@ require(path.join(pathLib, 'check-node'));
 const { initSite } = require(path.join(pathLib, 'init'));
 const { deploy } = require(path.join(pathLib, 'deploy'));
 const { listThemes, pickTheme, createTheme } = require(path.join(pathLib, 'theme'));
+const { syncSite } = require(path.join(pathLib, 'upgrade'));
 
 // 3. 工具函数
 function isSiteDir(dir) {
@@ -140,6 +141,24 @@ execSync(`node "${cliPath}" new:${subCmd}`, { cwd: siteDir, stdio: 'inherit' });
 
   deploy: () => deploy(siteDir),
 
+  upgrade: () => {
+    console.log('\n🚀 正在升级 memoria 全局 CLI...\n');
+    try {
+      execSync('npm update -g memoria', { stdio: 'inherit' });
+      console.log('\n✅ memoria 全局 CLI 已升级。\n');
+    } catch (e) {
+      console.error('\n❌ 升级失败，请检查 npm 权限或网络连接。\n');
+      process.exit(1);
+    }
+  },
+
+  sync: () => {
+    if (!siteDir) { console.error('Error: Run this command inside a Memoria site directory.'); process.exit(1); }
+    syncSite(siteDir).then(ok => {
+      if (!ok) process.exit(1);
+    }).catch(e => { console.error(e.message); process.exit(1); });
+  },
+
   help: () => {
     console.log(`Memoria CLI — 静态网站生成器
 
@@ -155,13 +174,17 @@ execSync(`node "${cliPath}" new:${subCmd}`, { cwd: siteDir, stdio: 'inherit' });
   theme new <name>  创建新主题
   theme list       列出所有可用主题
   deploy    交互式选择部署平台并配置
+  upgrade   升级 memoria 全局 CLI（等同于 npm update -g memoria）
+  sync      同步内置主题到当前站点
 
 示例:
   memoria init my-blog
   memoria new blog "Hello World"
   memoria server
   memoria theme
-  memoria deploy`);
+  memoria deploy
+  memoria upgrade
+  memoria sync`);
   },
 };
 

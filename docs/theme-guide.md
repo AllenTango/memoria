@@ -24,6 +24,20 @@ memoria generate --theme nord  # 或交互式选择: memoria theme
 
 主题选择会写入 `.themerc` 文件，后续 `memoria generate` 自动使用该主题。
 
+## 同步内置主题
+
+内置主题会随 memoria 更新而改进。`memoria init` 时主题被复制到站点，之后需要手动同步以获取更新。
+
+```bash
+memoria sync   # 同步最新内置主题到站点
+```
+
+同步时会对比站点已安装的主题与源码的差异：
+- 若主题文件无变化 → 直接覆盖
+- 若主题曾被修改 → 提示确认是否覆盖（详见 `memoria sync --help`）
+
+同步完成后运行 `memoria generate` 重新构建。
+
 ## 主题结构
 
 每个主题目录下包含三个文件：

@@ -130,6 +130,32 @@ memoria deploy
 
 ---
 
+## 升级与同步
+
+### `memoria upgrade` — 升级全局 CLI
+
+```bash
+memoria upgrade
+```
+
+升级 memoria 全局 CLI，等同于 `npm update -g memoria`。无需在站点目录执行。
+
+---
+
+### `memoria sync` — 同步内置主题
+
+```bash
+memoria sync
+```
+
+将 memoria 源码的最新内置主题同步到当前站点的 `themes/` 目录。必须在站点目录下执行。
+
+内置主题被更新后（如 dracula 配色调整），运行此命令将最新版本同步到你的站点。
+
+同步过程中若检测到站点主题文件已被修改，会提示确认是否覆盖。
+
+---
+
 ## 本地资源使用
 
 > ⚠️ 所有本地资源文件必须放在项目根目录的 `public/` 下！

@@ -124,6 +124,8 @@ memoria deploy          # 交互式选择部署平台
 | `memoria theme` | 切换主题 |
 | `memoria new blog/vlog/photo <title>` | 新建内容 |
 | `memoria deploy` | 部署站点 |
+| `memoria upgrade` | 升级全局 CLI |
+| `memoria sync` | 同步内置主题到站点 |
 | `memoria help` | 帮助 |
 
 ---
