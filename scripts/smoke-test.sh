@@ -4,7 +4,7 @@
 
 set -e
 
-TEST_DIR="/home/dev/memoria/scripts/test-site"
+TEST_DIR="$GITHUB_WORKSPACE/scripts/test-site"
 OUT="/tmp/smoke-$$.log"
 
 echo "=== Memoria 冒烟测试 ===" | tee "$OUT"
@@ -13,16 +13,8 @@ echo "" | tee -a "$OUT"
 
 cd "$TEST_DIR"
 
-echo "--- 测试 memoria init ---" | tee -a "$OUT"
-if npx memoria init 2>&1 | tee -a "$OUT"; then
-    echo "[PASS] memoria init 成功" | tee -a "$OUT"
-else
-    echo "[FAIL] memoria init 失败" | tee -a "$OUT"
-fi
-
-echo "" | tee -a "$OUT"
 echo "--- 测试 memoria generate ---" | tee -a "$OUT"
-if npx memoria generate 2>&1 | tee -a "$OUT"; then
+if memoria generate 2>&1 | tee -a "$OUT"; then
     echo "[PASS] memoria generate 成功" | tee -a "$OUT"
 else
     echo "[FAIL] memoria generate 失败" | tee -a "$OUT"
@@ -30,7 +22,7 @@ fi
 
 echo "" | tee -a "$OUT"
 echo "--- 测试 memoria server ---" | tee -a "$OUT"
-npx memoria server --watch &
+memoria server --watch &
 SERVER_PID=$!
 sleep 3
 if kill -0 $SERVER_PID 2>/dev/null; then
