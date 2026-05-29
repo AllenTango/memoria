@@ -6,8 +6,9 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import * as readline from 'readline';
 
-const PKG_ROOT = path.resolve(__dirname, '..');  // memoria (merged)
+const PKG_ROOT = path.resolve(__dirname, '..', '..');  // memoria (merged)
 const BUILT_IN_THEMES_DIR = path.join(PKG_ROOT, 'themes');
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -89,7 +90,6 @@ function printThemeCard(name: string, type: 'built-in' | 'user', colors: ThemeCo
 
 async function pickTheme(siteRoot: string): Promise<string | null> {
   const { builtIn, user } = listThemes(siteRoot);
-  const readline = require('readline');
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
   // Read current theme from .themerc

@@ -6,11 +6,11 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
-import { checkNodeVersion } from '../lib/check-node.js';
-import { initSite } from '../lib/init.js';
-import { deploy } from '../lib/deploy.js';
-import { listThemes, pickTheme, createTheme } from '../lib/theme.js';
-import { syncSite } from '../lib/upgrade.js';
+import { checkNodeVersion } from '../lib/check-node';
+import { initSite } from '../lib/init';
+import { deploy } from '../lib/deploy';
+import { listThemes, pickTheme, createTheme } from '../lib/theme';
+import { syncSite } from '../lib/upgrade';
 
 // 3. 工具函数
 function isSiteDir(dir: string): boolean {
@@ -31,9 +31,10 @@ const siteDir = findSiteDir(process.cwd());
 const args = process.argv.slice(2);
 const command = args[0];
 
-// 5. 版本检测
+// 5. 版本检测（使用 __dirname 定位项目根目录，不依赖 cwd）
+const PKG_ROOT = path.resolve(__dirname, '..', '..');
 if (args[0] === '--version' || args[0] === '-v') {
-  const pkgPath = path.resolve(process.cwd(), 'package.json');
+  const pkgPath = path.join(PKG_ROOT, 'package.json');
   const { version } = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
   console.log(`v${version}`);
   process.exit(0);
@@ -75,20 +76,20 @@ const commands: { [key: string]: () => void } = {
 
   new: () => {
     if (!siteDir) { console.error('Error: Run this command inside a Memoria site directory.'); process.exit(1); }
-    const cliPath = path.resolve(process.cwd(), 'lib', 'cli-content.js');
+    const cliPath = path.resolve(PKG_ROOT, 'dist', 'lib', 'cli-content');
     const subCmd = args[1];
-    execSync(`node "${cliPath}" new:${subCmd}`, { cwd: siteDir, stdio: 'inherit' });
+    execSync(`node "${cliPath}" new:${subCmd}`, { cwd: siteDir, stdio: 'inherit', env: { ...process.env, MEMORIA_SITE_ROOT: siteDir } });
   },
 
   generate: () => {
     if (!siteDir) { console.error('Error: Run this command inside a Memoria site directory.'); process.exit(1); }
-    const srcIndex = path.resolve(process.cwd(), 'dist', 'src', 'index.js');
+    const srcIndex = path.resolve(PKG_ROOT, 'dist', 'src', 'index');
     execSync(`node "${srcIndex}" --root "${siteDir}"`, { cwd: siteDir, stdio: 'inherit' });
   },
 
   server: () => {
     if (!siteDir) { console.error('Error: Run this command inside a Memoria site directory.'); process.exit(1); }
-    const srcIndex = path.resolve(process.cwd(), 'dist', 'src', 'index.js');
+    const srcIndex = path.resolve(PKG_ROOT, 'dist', 'src', 'index');
     execSync(`node "${srcIndex}" --root "${siteDir}" --watch`, { cwd: siteDir, stdio: 'inherit' });
   },
 
@@ -101,6 +102,20 @@ const commands: { [key: string]: () => void } = {
     } else {
       console.log('dist directory already clean.');
     }
+  },
+
+  bundle: () => {
+    if (!siteDir) { console.error('Error: Run this command inside a Memoria site directory.'); process.exit(1); }
+    console.log('\n📦 打包中...\n');
+    const srcIndex = path.resolve(PKG_ROOT, 'dist', 'src', 'index');
+    execSync(`node "${srcIndex}" --root "${siteDir}"`, { cwd: siteDir, stdio: 'inherit' });
+    const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const zipName = `memoria-${date}.zip`;
+    const distDir = path.join(siteDir, 'dist');
+    const zipPath = path.join(siteDir, zipName);
+    if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+    execSync(`cd "${distDir}" && zip -r "${zipPath}" .`, { stdio: 'inherit' });
+    console.log(`\n✅ 打包完成: ${zipName}（${(fs.statSync(zipPath).size / 1024).toFixed(1)} KB）\n`);
   },
 
   theme: () => {
@@ -170,6 +185,7 @@ const commands: { [key: string]: () => void } = {
   init      初始化新站点（交互式引导）
   new       新建内容（memoria new blog/vlog/photo <标题>）
   generate  构建站点
+  bundle    构建 + 打包成 zip
   server    本地预览 + 热重载
   clean     清理 dist 目录
   theme     切换主题（交互式）
@@ -182,6 +198,8 @@ const commands: { [key: string]: () => void } = {
 示例:
   memoria init my-blog
   memoria new blog "Hello World"
+  memoria generate
+  memoria bundle
   memoria server
   memoria theme
   memoria deploy

@@ -7,7 +7,7 @@
 ## 整体架构
 
 ```
-content/*.md          →  compiler.js  →  结构化数据（JSON-like）
+content/*.md          →  compiler.ts  →  结构化数据（JSON-like）
                                              ↓
                     themes/<name>/template.html
                                              ↓
@@ -18,16 +18,16 @@ public/                          ──────────→  dist/public/
 
 **单次构建流程**：
 
-1. `src/index.js` 解析命令行主题参数，读取 `.themerc` 确定当前主题
-2. `src/compiler.js` 扫描 `content/blogs/`、`content/vlogs/`、`content/photos/`，解析每个 Markdown 文件的 frontmatter + 正文
-3. `src/renderer.js` 读取 `themes/<name>/template.html`，注入各页面的 HTML 内容，写入 `dist/`
+1. `src/index.ts` 解析命令行主题参数，读取 `.themerc` 确定当前主题
+2. `src/compiler.ts` 扫描 `content/blogs/`、`content/vlogs/`、`content/photos/`，解析每个 Markdown 文件的 frontmatter + 正文
+3. `src/renderer.ts` 读取 `themes/<name>/template.html`，注入各页面的 HTML 内容，写入 `dist/`
 4. 复制主题 CSS（`colors.css`、`layout.css`）和 `public/` 目录到 `dist/`
 
 ---
 
 ## 核心模块
 
-### `src/compiler.js`
+### `src/compiler.ts`
 
 **职责**：读取 Markdown 源文件，解析 frontmatter，将 Markdown 转为 HTML。
 
@@ -63,7 +63,7 @@ compileAllContent(contentDir) → { blogs, vlogs, photos, all }
 
 ---
 
-### `src/renderer.js`
+### `src/renderer.ts`
 
 **职责**：生成各页面的 HTML 字符串。
 
@@ -91,7 +91,7 @@ applyTemplate(template, { title, page, content })
 
 ---
 
-### `src/utils.js`
+### `src/utils.ts`
 
 | 函数 | 作用 |
 |------|------|
@@ -134,7 +134,7 @@ const htmlContent = marked.parse(markdownString);
 
 ## 主题加载机制
 
-主题由 `src/index.js` 决定：
+主题由 `src/index.ts` 决定：
 
 ```javascript
 // 优先级：命令行参数 > .themerc 文件 > 默认值
@@ -166,7 +166,7 @@ HTML 模板中引入顺序：**先 colors.css（变量定义），后 layout.css
 **时间线交替布局**：每条记录在时间轴左右两侧交替显示（`data-side="left"` / `data-side="right"`）。
 
 ```javascript
-// renderer.js
+// renderer.ts
 function timelineEntry(item, side) {
   return side === 'left'
     ? `<div class="timeline-card-row">...</div><div class="timeline-connector"></div><div class="timeline-node">...</div>`

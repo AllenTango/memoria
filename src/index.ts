@@ -72,7 +72,7 @@ function resolveThemePath(themeName: string, siteRoot: string): ResolvedTheme | 
   ) {
     return { type: 'user', path: userThemePath };
   }
-  const builtInPath = path.join(__dirname, '..', 'themes', themeName);
+  const builtInPath = path.join(__dirname, '..', '..', 'themes', themeName);
   if (
     fs.existsSync(builtInPath) &&
     fs.existsSync(path.join(builtInPath, 'template.html'))

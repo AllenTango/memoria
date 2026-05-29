@@ -1,14 +1,14 @@
 import { defineConfig } from 'vitest/config';
-import path from 'path';
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    timeout: 30000,
-    reporter: 'verbose',
-    outputFile: {
-      json: path.join(__dirname, 'logs', 'test-results.json'),
+    include: ['tests/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['bin/**/*.ts', 'lib/**/*.ts', 'src/**/*.ts'],
     },
   },
 });

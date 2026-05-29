@@ -7,8 +7,7 @@
     "memoria": "dist/bin/memoria.js"
   },
   "scripts": {
-    "build": "npx tsc && node dist/bin/memoria.js",
-    "dev": "node src/index.js --watch"
+    "build": "npx tsc && node dist/bin/memoria.js"
   },
   "keywords": [
     "static-site-generator",

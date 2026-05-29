@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as readline from 'readline';
 
-const PKG_ROOT = path.resolve(__dirname, '..');
+const PKG_ROOT = path.resolve(__dirname, '..', '..');
 const BUILT_IN_THEMES_DIR = path.join(PKG_ROOT, 'themes');
 
 function copyDir(src: string, dst: string): void {

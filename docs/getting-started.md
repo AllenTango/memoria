@@ -4,7 +4,7 @@
 
 ## 环境要求
 
-- **Node.js 20+**
+- **Node.js 18+**
 - **npm 9+**
 
 检查版本：
@@ -23,7 +23,15 @@ cd memoria
 
 # 安装依赖
 npm install
+
+# 构建 TypeScript（必需步骤）
+npm run build
+
+# 链接为全局命令
+npm link
 ```
+
+之后即可在任意目录使用 `memoria` 命令。
 
 ## 创建新站点
 

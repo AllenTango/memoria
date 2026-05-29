@@ -42,8 +42,9 @@ export function compileFile(filePath: string, type: 'blog' | 'vlog' | 'photo'): 
   const htmlContent = marked.parse(markdown) as string;
 
   const title = frontmatter.title || path.basename(filePath, '.md');
-  const date = frontmatter.date
-    ? new Date(frontmatter.date).toISOString().split('T')[0]
+  const parsedDate = frontmatter.date ? new Date(frontmatter.date) : null;
+  const date = parsedDate && !isNaN(parsedDate.getTime())
+    ? parsedDate.toISOString().split('T')[0]
     : '1970-01-01';
 
   return {
@@ -69,7 +70,7 @@ function scanDir(dir: string, type: 'blog' | 'vlog' | 'photo'): CompiledItem[] {
   return fs.readdirSync(dir)
     .filter(f => f.endsWith('.md'))
     .map(f => compileFile(path.join(dir, f), type))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0));
 }
 
 /**
@@ -88,7 +89,7 @@ export function compileAllContent(contentDir: string): CompiledContent {
   const photos = scanDir(path.join(contentDir, 'photos'), 'photo');
 
   const all = [...blogs, ...vlogs, ...photos].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    (a, b) => (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0)
   );
 
   return { blogs, vlogs, photos, all };

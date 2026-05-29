@@ -185,4 +185,4 @@ cp /path/to/photo.jpg public/images/
 
 ## 实现原理
 
-CLI 命令通过 `memoria/lib/cli-content.js` 实现，使用 Node.js 原生 `readline` 模块实现交互式输入，不依赖任何外部库。
+CLI 命令通过 `memoria/lib/cli-content.ts` 实现，使用 Node.js 原生 `readline` 模块实现交互式输入，不依赖任何外部库。

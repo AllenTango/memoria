@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ── Test: Verify memoria works ──────────────────────────────────
-  test:
+  # ── Build ──────────────────────────────────────────────────────
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,27 +24,72 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build site
+      - name: Build TypeScript
         run: npm run build
 
       - name: Verify dist/
         run: test -d dist && echo "✅ dist/ created"
 
+  # ── CLI Tests ───────────────────────────────────────────────────
+  cli-test:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
       - name: Link CLI
         run: npm link
 
-      - name: Test CLI help
+      - name: CLI help
         run: memoria help | grep -q "Memoria"
 
-      - name: Test CLI version
+      - name: CLI version
         run: memoria --version
 
-      - name: Smoke test
-        run: bash scripts/smoke-test.sh
+  # ── Integration Tests ──────────────────────────────────────────
+  integration-test:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Install tsx
+        run: npm install -D tsx
+
+      - name: Run integration tests
+        run: npx tsx tests/memoria-integration-test.ts
+        env:
+          FORCE_COLOR: '0'
 
   # ── Publish: on git tag only ────────────────────────────────────
   publish:
-    needs: [test]
+    needs: [cli-test, integration-test]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:

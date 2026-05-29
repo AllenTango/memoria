@@ -51,6 +51,7 @@ function createSampleContent(targetDir: string): void {
     'title: "Welcome to My Blog"',
     `date: "${new Date().toISOString().slice(0, 10)}"`,
     'tags: ["welcome"]',
+    'type: "blog"',
     'description: "My first blog post"',
     '---',
     '',
@@ -63,6 +64,9 @@ function createSampleContent(targetDir: string): void {
     'title: "My First Vlog"',
     `date: "${new Date().toISOString().slice(0, 10)}"`,
     'tags: ["first"]',
+    'type: "vlog"',
+    'video: ""',
+    'thumbnail: ""',
     'description: "My first video log"',
     '---',
     '',
@@ -75,7 +79,9 @@ function createSampleContent(targetDir: string): void {
     'title: "Beautiful Sunset"',
     `date: "${new Date().toISOString().slice(0, 10)}"`,
     'tags: ["nature"]',
-    'description: "A beautiful sunset I captured"',
+    'type: "photo"',
+    'photos: []',
+    'description: ""',
     '---',
     '',
     '![Sunset](https://example.com/sunset.jpg)',
@@ -212,6 +218,7 @@ function showGuide(targetDir: string, siteName: string, hasSamples: boolean, has
   console.log('  memoria generate    # 构建站点');
   console.log('  memoria server      # 本地预览');
   console.log('  memoria new blog "标题"   # 新建博客');
+  console.log('  memoria new vblog "标题"   # 新建影像');
   console.log('  memoria new photo "标题"  # 新建相册');
   console.log('\n  ─────────────────────────────');
   console.log('  文档: https://github.com/AllenTango/memoria\n');

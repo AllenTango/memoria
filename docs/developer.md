@@ -10,19 +10,17 @@
 memoria/
 ├── bin/                   # CLI 入口（memoria 命令）
 ├── lib/                   # CLI 实现（init/deploy/theme/new 等）
-│   ├── cli-content.js    # 内容创建（new blog/vlog/photo）
+│   ├── cli-content.ts    # 内容创建（new blog/vlog/photo）
 │   └── ...
 ├── src/                   # 核心生成逻辑（compiler/renderer）
 ├── themes/                # 主题（dracula/mint/nord/peach）
 ├── assets/
 │   └── site-template/     # init 时复制的站点模板
-├── scripts/               # 开发辅助脚本
-│   ├── test-site/         # 集成测试用站点
-│   │   ├── _config.yml
-│   │   ├── package.json
-│   │   └── content/       # 测试内容
-│   ├── test-theme.sh      # 主题结构验证脚本
-│   └── smoke-test.sh      # 冒烟测试脚本
+├── tests/                  # 测试（TS 集成测试 + vitest）
+│   ├── memoria-integration-test.ts  # 完整 CLI 集成测试
+│   ├── cli.test.ts        # vitest 单元测试
+│   ├── fixtures/          # 临时测试站点（自动生成，自动清理）
+│   └── logs/              # 测试日志
 ├── docs/                  # 项目文档
 ├── .github/               # GitHub Actions CI 配置
 ├── developer.md          # 本文档（开发者文档）
@@ -32,9 +30,9 @@ memoria/
 ### 核心流程
 
 ```
-src/index.js（入口）
-  → src/compiler.js（扫描 content/，解析 Markdown + frontmatter）
-  → src/renderer.js（读取 theme/template.html，注入数据，输出 HTML）
+src/index.ts（入口）
+  → src/compiler.ts（扫描 content/，解析 Markdown + frontmatter）
+  → src/renderer.ts（读取 theme/template.html，注入数据，输出 HTML）
   → dist/*.html + dist/colors.css + dist/layout.css + dist/public/
 ```
 
@@ -103,7 +101,7 @@ src/index.js（入口）
 
 ### 切换主题原理
 
-`src/index.js` 读取主题名的优先级：
+`src/index.ts` 读取主题名的优先级：
 
 1. **命令行参数** `--theme dracula`
 2. **`.themerc` 文件**（由 `memoria theme` 写入）
@@ -220,7 +218,7 @@ memoria generate --theme my-theme
 
 ## CLI 命令扩展方法
 
-CLI 定义在 `memoria/lib/cli-content.js`，使用原生 Node.js `readline` 模块，无外部依赖。
+CLI 定义在 `memoria/lib/cli-content.ts`，使用原生 Node.js `readline` 模块，无外部依赖。
 
 ### 新增命令
 
@@ -246,16 +244,16 @@ const commands = {
 然后在 package.json scripts 中注册：
 
 ```json
-"my-command": "node memoria/lib/cli-content.js my-command"
+"my-command": "node memoria/lib/cli-content.ts my-command"
 ```
 
 ### 命令注册到 npm script
 
-所有 CLI 命令通过 `memoria/lib/cli-content.js <command>` 的方式调用，推荐在 `package.json` 的 `scripts` 中注册：
+所有 CLI 命令通过 `memoria/lib/cli-content.ts <command>` 的方式调用，推荐在 `package.json` 的 `scripts` 中注册：
 
 ```json
 "scripts": {
-  "my-command": "node memoria/lib/cli-content.js my-command"
+  "my-command": "node memoria/lib/cli-content.ts my-command"
 }
 ```
 
@@ -311,7 +309,7 @@ ls dist/blog/
 
 ### 添加调试输出
 
-在 `src/index.js` 的 `build()` 函数中添加 `console.log`：
+在 `src/index.ts` 的 `build()` 函数中添加 `console.log`：
 
 ```javascript
 function build() {
@@ -323,7 +321,7 @@ function build() {
 
 ### 调试 renderer
 
-在 `src/renderer.js` 中每个渲染函数返回前，可以将 `content` 打印出来检查结构。
+在 `src/renderer.ts` 中每个渲染函数返回前，可以将 `content` 打印出来检查结构。
 
 ---
 
@@ -331,8 +329,8 @@ function build() {
 
 | 文件 | 作用 |
 |------|------|
-| `src/compiler.js` | `scanDir()` 扫描目录 → `compileFile()` 解析单个文件 → `compileAllContent()` 汇总 |
-| `src/renderer.js` | `renderIndex()` / `renderBlogs()` / `renderVlogs()` / `renderPhotos()` / `renderAbout()` / `renderDetail()` |
-| `src/utils.js` | `slugify()` 生成 URL 安全标题、`formatDate()` 格式化日期、`extractExcerpt()` 提取摘要 |
-| `memoria/lib/cli-content.js` | 交互式 CLI，`readline` 提问，生成 Markdown 骨架 |
+| `src/compiler.ts` | `scanDir()` 扫描目录 → `compileFile()` 解析单个文件 → `compileAllContent()` 汇总 |
+| `src/renderer.ts` | `renderIndex()` / `renderBlogs()` / `renderVlogs()` / `renderPhotos()` / `renderAbout()` / `renderDetail()` |
+| `src/utils.ts` | `slugify()` 生成 URL 安全标题、`formatDate()` 格式化日期、`extractExcerpt()` 提取摘要 |
+| `memoria/lib/cli-content.ts` | 交互式 CLI，`readline` 提问，生成 Markdown 骨架 |
 | `themes/<name>/template.html` | HTML 模板，`{{PAGE_TITLE}}`、`{{PAGE_CONTENT}}` 等占位符 |
