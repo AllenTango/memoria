@@ -6,53 +6,236 @@
 <title>Memoria 文档中心</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
+/* ═══════════════════════════════════════════════
+   Dracula Theme (Dark) — 暗黑模式
+   Peach Theme (Light) — 明亮模式
+═══════════════════════════════════════════════ */
+
+:root {
+  --bg: #282a36;
+  --bg-sidebar: #21222c;
+  --bg-content: #f8f8f2;
+  --surface: #44475a;
+  --text: #f8f8f2;
+  --text-muted: #6272a4;
+  --accent: #bd93f9;
+  --accent-alt: #ff79c6;
+  --border: #44475a;
+  --code-bg: #1e1f29;
+  --link: #8be9fd;
+  --hover-bg: #44475a;
+  --transition: 0.2s;
+}
+
+[data-theme="peach"] {
+  --bg: #fef9f3;
+  --bg-sidebar: #fdf3eb;
+  --bg-content: #fffaf5;
+  --surface: #f5e6d3;
+  --text: #2d2a2e;
+  --text-muted: #a0896e;
+  --accent: #e8653b;
+  --accent-alt: #c9562a;
+  --border: #e8d9c5;
+  --code-bg: #f0e0cc;
+  --link: #d4621b;
+  --hover-bg: #f0e0cc;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #f6f8fa; color: #24292f; height: 100vh; display: flex; flex-direction: column; }
-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-header .brand { font-size: 1.2rem; font-weight: 600; }
-header .brand span { opacity: 0.85; font-size: 0.85rem; font-weight: 400; }
-header nav a { color: white; text-decoration: none; margin-left: 20px; opacity: 0.9; font-size: 0.9rem; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: background var(--transition), color var(--transition);
+}
+
+header {
+  background: var(--bg-sidebar);
+  color: var(--text);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+header .brand { font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+header .brand span { opacity: 0.7; font-size: 0.8rem; font-weight: 400; }
+
+header nav { display: flex; align-items: center; gap: 16px; }
+header nav a { color: var(--text); text-decoration: none; font-size: 0.88rem; opacity: 0.8; }
 header nav a:hover { opacity: 1; text-decoration: underline; }
+
+/* 主题切换按钮 */
+.theme-toggle {
+  display: flex;
+  gap: 6px;
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 4px;
+}
+.theme-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+}
+.theme-btn:hover { transform: scale(1.1); }
+.theme-btn.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--bg-sidebar); }
+
+.btn-dracula { background: #282a36; border: 2px solid #6272a4; }
+.btn-peach { background: #fef9f3; border: 2px solid #e8d9c5; }
+
 .main { display: flex; flex: 1; overflow: hidden; }
-.sidebar { width: 260px; background: white; border-right: 1px solid #eaecef; overflow-y: auto; flex-shrink: 0; }
-.sidebar h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #57606a; padding: 16px 16px 8px; border-bottom: 1px solid #eaecef; }
-.sidebar ul { list-style: none; padding: 8px 0; }
-.sidebar li a { display: block; padding: 8px 16px; color: #24292f; text-decoration: none; font-size: 0.9rem; border-left: 3px solid transparent; transition: all 0.15s; }
-.sidebar li a:hover { background: #f6f8fa; color: #0969da; border-left-color: #0969da; }
-.sidebar li a.active { background: #f6f8fa; color: #0969da; font-weight: 500; border-left-color: #0969da; }
-.content { flex: 1; overflow-y: auto; padding: 40px 60px; background: white; }
-.doc { max-width: 800px; margin: 0 auto; line-height: 1.7; }
-.doc h1 { font-size: 1.8rem; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #eaecef; }
-.doc h2 { font-size: 1.3rem; margin: 28px 0 12px; padding-bottom: 6px; border-bottom: 1px solid #eaecef; }
-.doc h3 { font-size: 1.1rem; margin: 20px 0 8px; }
+
+.sidebar {
+  width: 250px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  flex-shrink: 0;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.sidebar h3 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  padding: 14px 16px 8px;
+  border-bottom: 1px solid var(--border);
+  transition: border-color var(--transition);
+}
+
+.sidebar ul { list-style: none; padding: 6px 0; }
+.sidebar li a {
+  display: block;
+  padding: 8px 16px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.88rem;
+  border-left: 3px solid transparent;
+  transition: all 0.15s;
+}
+.sidebar li a:hover {
+  background: var(--hover-bg);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+.sidebar li a.active {
+  background: var(--hover-bg);
+  color: var(--accent);
+  font-weight: 500;
+  border-left-color: var(--accent);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg-content);
+  transition: background var(--transition);
+}
+
+.doc {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 50px;
+  line-height: 1.75;
+  color: var(--text);
+}
+
+/* Markdown 渲染样式 */
+.doc h1 {
+  font-size: 1.8rem;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border);
+  color: var(--text);
+}
+.doc h2 {
+  font-size: 1.3rem;
+  margin: 30px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.doc h3 { font-size: 1.1rem; margin: 22px 0 8px; color: var(--text); }
 .doc p { margin: 12px 0; }
 .doc ul, .doc ol { margin: 12px 0; padding-left: 24px; }
 .doc li { margin: 6px 0; }
-.doc code { background: #f6f8fa; padding: 2px 6px; border-radius: 4px; font-size: 0.88em; font-family: 'SFMono-Regular', Consolas, monospace; border: 1px solid #eaecef; }
-.doc pre { background: #f6f8fa; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 16px 0; border: 1px solid #eaecef; }
+.doc code {
+  background: var(--code-bg);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.87em;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+}
+.doc pre {
+  background: var(--code-bg);
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 16px 0;
+}
 .doc pre code { background: none; border: none; padding: 0; font-size: 0.85em; }
-.doc blockquote { border-left: 4px solid #0969da; padding: 8px 16px; margin: 16px 0; background: #f6f8fa; color: #57606a; }
+.doc blockquote {
+  border-left: 4px solid var(--accent);
+  padding: 8px 16px;
+  margin: 16px 0;
+  background: var(--surface);
+  opacity: 0.85;
+}
 .doc table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
-.doc th { background: #f6f8fa; text-align: left; padding: 10px 12px; border: 1px solid #eaecef; font-weight: 600; }
-.doc td { padding: 8px 12px; border: 1px solid #eaecef; }
-.doc tr:hover td { background: #f6f8fa; }
-.doc a { color: #0969da; text-decoration: none; }
+.doc th {
+  background: var(--surface);
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+.doc td { padding: 8px 12px; border: 1px solid var(--border); }
+.doc a { color: var(--link); text-decoration: none; }
 .doc a:hover { text-decoration: underline; }
 .doc strong { font-weight: 600; }
 .doc img { max-width: 100%; border-radius: 8px; margin: 12px 0; }
-.welcome { text-align: center; padding: 80px 20px; color: #57606a; }
-.welcome h2 { font-size: 1.5rem; color: #24292f; margin-bottom: 12px; }
-.welcome p { font-size: 1rem; }
-@media (max-width: 700px) { .sidebar { display: none; } .content { padding: 20px; } }
+.doc hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+.welcome {
+  text-align: center;
+  padding: 100px 20px;
+  color: var(--text-muted);
+}
+.welcome h2 { font-size: 1.5rem; color: var(--text); margin-bottom: 12px; }
+
+@media (max-width: 700px) {
+  .sidebar { display: none; }
+  .doc { padding: 20px; }
+}
 </style>
 </head>
-<body>
+<body data-theme="dracula">
 
 <header>
   <div class="brand">📚 Memoria 文档 <span>/ 文档中心</span></div>
   <nav>
+    <div class="theme-toggle">
+      <button class="theme-btn btn-dracula active" onclick="setTheme('dracula')" title="Dracula 暗黑模式">🌙</button>
+      <button class="theme-btn btn-peach" onclick="setTheme('peach')" title="Peach 明亮模式">☀️</button>
+    </div>
     <a href="https://github.com/AllenTango/memoria" target="_blank">GitHub</a>
-    <a href="https://allentango.github.io/memoria/" onclick="showWelcome()">首页</a>
   </nav>
 </header>
 
@@ -79,6 +262,17 @@ const docs = [
   'testing.md'
 ];
 
+function setTheme(theme) {
+  document.body.dataset.theme = theme;
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  if (theme === 'dracula') {
+    document.querySelector('.btn-dracula').classList.add('active');
+  } else {
+    document.querySelector('.btn-peach').classList.add('active');
+  }
+  localStorage.setItem('memoria-docs-theme', theme);
+}
+
 const navList = document.getElementById('nav-list');
 const container = document.getElementById('doc-container');
 
@@ -94,9 +288,7 @@ navList.addEventListener('click', e => {
   const a = e.target.closest('a');
   if (!a) return;
   e.preventDefault();
-  const file = a.dataset.file;
-  loadDoc(file);
-
+  loadDoc(a.dataset.file);
   document.querySelectorAll('.sidebar a').forEach(el => el.classList.remove('active'));
   a.classList.add('active');
 });
@@ -123,7 +315,10 @@ function showWelcome() {
   document.querySelectorAll('.sidebar a').forEach(el => el.classList.remove('active'));
 }
 
-// 默认显示欢迎页
+// 恢复主题偏好
+const saved = localStorage.getItem('memoria-docs-theme');
+if (saved) setTheme(saved);
+
 showWelcome();
 </script>
 </body>
