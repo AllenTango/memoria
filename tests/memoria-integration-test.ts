@@ -10,12 +10,11 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const PROJECT_ROOT = '/home/dev/workspace/projects/memoria';
+const PROJECT_ROOT = path.resolve(__dirname, '..');
 const MEMORIA_SRC = path.join(PROJECT_ROOT, 'dist', 'bin', 'memoria.js');
 const FIXTURES_DIR = path.join(PROJECT_ROOT, 'tests', 'fixtures');
-const LOGS_DIR = path.join(PROJECT_ROOT, 'tests', 'logs');
-
-const LOG_FILE = path.join(LOGS_DIR, `memoria-test-${timestamp()}.log`);
+// 日志写到系统临时目录，确保可写
+const LOG_FILE = path.join('/tmp', `memoria-test-${timestamp()}.log`);
 
 function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -122,7 +121,7 @@ function record(name: string, passed: boolean, duration: number, error?: string)
 
 async function main() {
   const startTime = Date.now();
-  if (!fs.existsSync(LOGS_DIR)) fs.mkdirSync(LOGS_DIR, { recursive: true });
+  if (!fs.existsSync('/tmp')) fs.mkdirSync('/tmp', { recursive: true });
   fs.writeFileSync(LOG_FILE, '');
 
   logSection('Memoria 完整测试开始');
