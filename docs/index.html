@@ -106,21 +106,7 @@ header nav { display: flex; align-items: center; gap: 14px; }
 header nav a { color: var(--text); text-decoration: none; font-size: 0.87rem; opacity: 0.8; }
 header nav a:hover { opacity: 1; text-decoration: underline; }
 
-.theme-toggle { display: flex; gap: 5px; }
-.theme-btn {
-  width: 30px; height: 30px;
-  border-radius: 50%;
-  border: 2px solid var(--border);
-  cursor: pointer;
-  font-size: 0.8rem;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s;
-}
-.theme-btn:hover { transform: scale(1.1); }
-.theme-btn.active { border-color: var(--accent); }
 
-.btn-dracula { background: #282a36; color: #bd93f9; }
-.btn-peach { background: #fef9f3; color: #e8653b; }
 
 /* ── Mobile hamburger ── */
 .hamburger {
@@ -277,10 +263,12 @@ header nav a:hover { opacity: 1; text-decoration: underline; }
     <div class="brand">📚 Memoria 文档 <span>/ 文档中心</span></div>
   </div>
   <nav>
-    <div class="theme-toggle">
-      <button class="theme-btn btn-dracula active" onclick="setTheme('dracula')" title="🌙 Dracula 暗黑">🌙</button>
-      <button class="theme-btn btn-peach" onclick="setTheme('peach')" title="☀️ Peach 明亮">☀️</button>
-    </div>
+    <button id="theme-toggle-btn" onclick="toggleTheme()" style="
+      background:none;border:none;cursor:pointer;
+      font-size:1.2rem;padding:4px;
+      display:flex;align-items:center;justify-content:center;
+      color:var(--text);
+    " title="切换主题"></button>
     <a href="https://github.com/AllenTango/memoria" target="_blank">GitHub</a>
   </nav>
 </header>
@@ -297,23 +285,38 @@ header nav a:hover { opacity: 1; text-decoration: underline; }
 
 <script>
 const docs = [
-  'getting-started.md',
-  'content-guide.md',
-  'cli.md',
-  'cli-reference.md',
-  'theme-guide.md',
-  'deploy-guide.md',
-  'architecture.md',
-  'developer.md',
-  'testing.md'
+  { file: 'getting-started.md',  title: '新手入门' },
+  { file: 'content-guide.md',    title: '内容格式说明' },
+  { file: 'cli.md',              title: 'CLI 快捷命令' },
+  { file: 'cli-reference.md',   title: 'CLI 命令参考' },
+  { file: 'theme-guide.md',      title: '主题开发指南' },
+  { file: 'deploy-guide.md',     title: '部署指南' },
+  { file: 'architecture.md',      title: '架构设计' },
+  { file: 'developer.md',        title: '开发者文档' },
+  { file: 'testing.md',         title: '测试指南' },
 ];
 
 function setTheme(theme) {
   document.body.dataset.theme = theme;
-  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-  if (theme === 'dracula') document.querySelector('.btn-dracula').classList.add('active');
-  else document.querySelector('.btn-peach').classList.add('active');
   localStorage.setItem('memoria-docs-theme', theme);
+  updateToggleBtn();
+}
+
+function updateToggleBtn() {
+  const btn = document.getElementById('theme-toggle-btn');
+  const current = document.body.dataset.theme;
+  if (current === 'peach') {
+    btn.textContent = '🌙';
+    btn.title = '切换暗黑模式';
+  } else {
+    btn.textContent = '☀️';
+    btn.title = '切换明亮模式';
+  }
+}
+
+function toggleTheme() {
+  const current = document.body.dataset.theme;
+  setTheme(current === 'peach' ? 'dracula' : 'peach');
 }
 
 function toggleSidebar() {
@@ -333,9 +336,7 @@ function closeSidebar() {
 
 // Build nav
 const navList = document.getElementById('nav-list');
-docs.forEach(file => {
-  const name = file.replace('.md','').replace(/-/g,' ');
-  const title = name.charAt(0).toUpperCase() + name.slice(1);
+docs.forEach(({ file, title }) => {
   const li = document.createElement('li');
   li.innerHTML = `<a href="#" data-file="${file}">${title}</a>`;
   navList.appendChild(li);
@@ -374,7 +375,7 @@ function showWelcome() {
 }
 
 const saved = localStorage.getItem('memoria-docs-theme');
-if (saved) setTheme(saved);
+if (saved) { setTheme(saved); }
 showWelcome();
 </script>
 </body>
