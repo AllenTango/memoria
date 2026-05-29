@@ -82,13 +82,13 @@ const commands: { [key: string]: () => void } = {
 
   generate: () => {
     if (!siteDir) { console.error('Error: Run this command inside a Memoria site directory.'); process.exit(1); }
-    const srcIndex = path.resolve(process.cwd(), 'src', 'index.js');
+    const srcIndex = path.resolve(process.cwd(), 'dist', 'src', 'index.js');
     execSync(`node "${srcIndex}" --root "${siteDir}"`, { cwd: siteDir, stdio: 'inherit' });
   },
 
   server: () => {
     if (!siteDir) { console.error('Error: Run this command inside a Memoria site directory.'); process.exit(1); }
-    const srcIndex = path.resolve(process.cwd(), 'src', 'index.js');
+    const srcIndex = path.resolve(process.cwd(), 'dist', 'src', 'index.js');
     execSync(`node "${srcIndex}" --root "${siteDir}" --watch`, { cwd: siteDir, stdio: 'inherit' });
   },
 

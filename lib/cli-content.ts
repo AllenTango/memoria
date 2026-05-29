@@ -151,7 +151,7 @@ async function cmdNewPhoto(): Promise<void> {
 function cmdBundle(): void {
   console.log('\n📦 打包中...\n');
   // Build first
-  execSync(`node "${path.join(rootDir, 'src', 'index.js')}"`, { cwd: rootDir, stdio: 'inherit' });
+  execSync(`node "${path.join(rootDir, 'dist', 'src', 'index.js')}"`, { cwd: rootDir, stdio: 'inherit' });
 
   const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
   const zipName = `memoria-${date}.zip`;

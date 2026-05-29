@@ -2,7 +2,7 @@
   "name": "memoria",
   "version": "1.0.0",
   "description": "轻量级静态博客系统，支持文章/视频/相册三种内容形态",
-  "main": "src/index.js",
+  "main": "dist/src/index.js",
   "bin": {
     "memoria": "dist/bin/memoria.js"
   },

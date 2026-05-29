@@ -1,21 +1,20 @@
-const fs = require('fs');
-const path = require('path');
+/**
+ * Memoria Utils — shared file-system and string utilities
+ */
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Read file content safely
- * @param {string} filePath
- * @returns {string}
  */
-function readFile(filePath) {
+export function readFile(filePath: string): string {
   return fs.readFileSync(filePath, 'utf-8');
 }
 
 /**
  * Write file content safely
- * @param {string} filePath
- * @param {string} content
  */
-function writeFile(filePath, content) {
+export function writeFile(filePath: string, content: string): void {
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -25,9 +24,8 @@ function writeFile(filePath, content) {
 
 /**
  * Ensure directory exists
- * @param {string} dirPath
  */
-function ensureDir(dirPath) {
+export function ensureDir(dirPath: string): void {
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
   }
@@ -35,12 +33,9 @@ function ensureDir(dirPath) {
 
 /**
  * Recursively get all files matching extension
- * @param {string} dir
- * @param {string} ext
- * @returns {string[]}
  */
-function getFilesRecursive(dir, ext) {
-  let results = [];
+export function getFilesRecursive(dir: string, ext: string): string[] {
+  let results: string[] = [];
   if (!fs.existsSync(dir)) return results;
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
@@ -56,49 +51,29 @@ function getFilesRecursive(dir, ext) {
 
 /**
  * Convert a date string to a readable format
- * @param {string} dateStr
- * @returns {string}
  */
-function formatDate(dateStr) {
+export function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   return d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 /**
  * Generate a slug from a string
- * @param {string} str
- * @returns {string}
  */
-function slugify(str) {
+export function slugify(str: string): string {
   return str
     .toLowerCase()
     .trim()
-    // Replace spaces/hyphens/underscores with dash
     .replace(/[\s_-]+/g, '-')
-    // Remove characters that are not alphanumerics, Chinese, or dash
     .replace(/[^\w\u4e00-\u9fff-]/g, '')
     .replace(/^-+|-+$/g, '');
 }
 
 /**
  * Extract a summary/excerpt from HTML content
- * @param {string} html
- * @param {number} maxLength
- * @returns {string}
  */
-function extractExcerpt(html, maxLength = 160) {
-  // Remove HTML tags
+export function extractExcerpt(html: string, maxLength = 160): string {
   const text = html.replace(/<[^>]+>/g, '').trim();
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength).replace(/\s+\S*$/, '') + '…';
 }
-
-module.exports = {
-  readFile,
-  writeFile,
-  ensureDir,
-  getFilesRecursive,
-  formatDate,
-  slugify,
-  extractExcerpt,
-};

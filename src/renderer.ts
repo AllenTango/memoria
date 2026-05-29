@@ -1,16 +1,76 @@
 /**
  * Memoria Renderer
  */
-const path = require('path');
-const { formatDate, extractExcerpt, slugify } = require('./utils');
+import * as path from 'path';
+import { formatDate, extractExcerpt, slugify } from './utils';
+import type { CompiledItem } from './compiler';
 
-/**
- * Convert consecutive <img> tags in HTML into a horizontal slideshow.
- * Detects 2+ consecutive images (optionally wrapped in <p>) and replaces
- * them with a slide container with prev/next buttons and dot indicators.
- */
-function convertConsecutiveImagesToSlideshow(html) {
-  // Regex: find 2+ consecutive image blocks (img possibly wrapped in <p>)
+interface PhotoItem extends CompiledItem {
+  description: string;
+}
+
+interface TemplateVars {
+  title?: string;
+  page?: string;
+  content?: string;
+  siteConfig?: { name?: string; icon?: string };
+}
+
+function applyTemplate(template: string, { title, page, content, siteConfig }: TemplateVars): string {
+  return template
+    .replace(/{{PAGE_TITLE}}/g, title || 'Memoria')
+    .replace(/{{SITE_NAME}}/g, siteConfig?.name || 'Memoria')
+    .replace(/{{SITE_ICON}}/g, siteConfig?.icon || '/public/images/memoria-icon.png')
+    .replace('{{PAGE}}', page || 'home')
+    .replace(/{{BLOGS_ACTIVE}}/g, page === 'blogs' ? ' active' : '')
+    .replace(/{{VLOGS_ACTIVE}}/g, page === 'vlogs' ? ' active' : '')
+    .replace(/{{PHOTO_ACTIVE}}/g, page === 'photo' ? ' active' : '')
+    .replace(/{{ABOUT_ACTIVE}}/g, page === 'about' ? ' active' : '')
+    .replace(/{{HOME_ACTIVE}}/g, page === 'home' ? ' active' : '')
+    .replace('{{PAGE_CONTENT}}', content || '');
+}
+
+function formatDateCard(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+function timelineEntry(item: CompiledItem, side: 'left' | 'right'): string {
+  const dateFormatted = formatDate(item.date);
+  const dateCardFormatted = formatDateCard(item.date);
+  const excerpt = item.type === 'photo'
+    ? (item.description || `${(item.photos || []).length} 张照片`)
+    : extractExcerpt(item.content || item.description || '');
+  const typeDir = { blog: 'blog', vlog: 'vlog', photo: 'photo' };
+  const dir = typeDir[item.type] || 'blog';
+  const href = `/${dir}/${slugify(item.title)}/`;
+  const ctaLabel = item.type === 'blog' ? 'Read More' : item.type === 'vlog' ? 'Watch' : 'View';
+
+  let imgUrl = '';
+  if (item.type === 'blog' && item.cover) imgUrl = item.cover;
+  else if (item.type === 'blog' && item.thumbnail) imgUrl = item.thumbnail;
+  else if (item.type === 'vlog' && item.thumbnail) imgUrl = item.thumbnail;
+  else if (item.type === 'photo' && item.thumbnail) imgUrl = item.thumbnail;
+
+  const imgHtml = imgUrl
+    ? `<img src="${imgUrl}" alt="${item.title}" class="timeline-card-image" loading="lazy">`
+    : '';
+
+  const descHtml = item.type === 'photo' && item.description
+    ? `<p class="timeline-card-desc">${item.description}</p>` : '';
+  const excerptHtml = item.type === 'photo' ? '' : (excerpt ? `<p class="timeline-card-excerpt">${excerpt}</p>` : '');
+
+  const cardBody = `<div class="timeline-card-body"><h2 class="timeline-card-title">${item.title}</h2><p class="timeline-card-date">${dateCardFormatted}</p>${descHtml}${excerptHtml}<span class="timeline-card-cta">${ctaLabel} →</span></div>`;
+
+  return `
+    <div class="timeline-entry" data-side="${side}">
+      ${side === 'left'
+        ? `<div class="timeline-card-row"><a href="${href}" class="timeline-card">${imgHtml}${cardBody}</a></div><div class="timeline-connector"></div><div class="timeline-node"><div class="timeline-dot"></div></div>`
+        : `<div class="timeline-node"><div class="timeline-dot"></div></div><div class="timeline-connector"></div><div class="timeline-card-row"><a href="${href}" class="timeline-card">${imgHtml}${cardBody}</a></div>`}
+    </div>`;
+}
+
+function convertConsecutiveImagesToSlideshow(html: string): string {
   const consecutiveImgRegex = /((?:<p[^>]*>\s*)?<img[^>]+>(?:\s*<\/p>)?(?:\s*(?:<p[^>]*>\s*)?<img[^>]+>(?:\s*<\/p>)?)+)/g;
 
   return html.replace(consecutiveImgRegex, function(match) {
@@ -24,7 +84,7 @@ function convertConsecutiveImagesToSlideshow(html) {
       return { url: srcMatch ? srcMatch[1] : '', caption: altMatch ? altMatch[1] : '' };
     });
 
-    const sid = Math.random().toString(36).substr(2, 9);
+    const sid = Math.random().toString(36).substring(2, 11);
     const containerId = 'cs_' + sid;
     const photosVar = 'csPhotos_' + sid;
 
@@ -58,81 +118,19 @@ function convertConsecutiveImagesToSlideshow(html) {
   });
 }
 
-function applyTemplate(template, { title, page, content, siteConfig }) {
-  return template
-    .replace(/{{PAGE_TITLE}}/g, title || 'Memoria')
-    .replace(/{{SITE_NAME}}/g, (siteConfig && siteConfig.name) ? siteConfig.name : 'Memoria')
-    .replace(/{{SITE_ICON}}/g, (siteConfig && siteConfig.icon) ? siteConfig.icon : '/public/images/memoria-icon.png')
-    .replace('{{PAGE}}', page || 'home')
-    .replace(/{{BLOGS_ACTIVE}}/g, page === 'blogs' ? ' active' : '')
-    .replace(/{{VLOGS_ACTIVE}}/g, page === 'vlogs' ? ' active' : '')
-    .replace(/{{PHOTO_ACTIVE}}/g, page === 'photo' ? ' active' : '')
-    .replace(/{{ABOUT_ACTIVE}}/g, page === 'about' ? ' active' : '')
-    .replace(/{{HOME_ACTIVE}}/g, page === 'home' ? ' active' : '')
-    .replace('{{PAGE_CONTENT}}', content);
-}
-
-// ── Timeline entry ──────────────────────────────────────────────────────
-
-function formatDateCard(dateStr) {
-  const d = new Date(dateStr);
-  return `${d.getMonth() + 1}月${d.getDate()}日`;
-}
-
-function timelineEntry(item, side) {
-  const dateFormatted = formatDate(item.date);
-  const dateCardFormatted = formatDateCard(item.date);
-  const excerpt = item.type === 'photo'
-    ? (item.description || `${(item.photos || []).length} 张照片`)
-    : extractExcerpt(item.content || item.description || '');
-  const typeDir = { blog: 'blog', vlog: 'vlog', photo: 'photo' };
-  const dir = typeDir[item.type] || 'blog';
-  const href = `/${dir}/${slugify(item.title)}/`;
-  const ctaLabel = item.type === 'blog' ? 'Read More' : item.type === 'vlog' ? 'Watch' : 'View';
-
-  // Image: only render if item has cover (blog) or thumbnail (vlog/photo) — no placeholders
-  let imgUrl = '';
-  if (item.type === 'blog' && item.cover) imgUrl = item.cover;
-  else if (item.type === 'blog' && item.thumbnail) imgUrl = item.thumbnail;
-  else if (item.type === 'vlog' && item.thumbnail) imgUrl = item.thumbnail;
-  else if (item.type === 'photo' && item.thumbnail) imgUrl = item.thumbnail;
-
-  const imgHtml = imgUrl
-    ? `<img src="${imgUrl}" alt="${item.title}" class="timeline-card-image" loading="lazy">`
-    : '';
-
-  const descHtml = item.type === 'photo' && item.description
-    ? `<p class="timeline-card-desc">${item.description}</p>` : '';
-  const excerptHtml = item.type === 'photo' ? '' : (excerpt ? `<p class="timeline-card-excerpt">${excerpt}</p>` : '');
-
-  const cardBody = `<div class="timeline-card-body"><h2 class="timeline-card-title">${item.title}</h2><p class="timeline-card-date">${dateCardFormatted}</p>${descHtml}${excerptHtml}<span class="timeline-card-cta">${ctaLabel} →</span></div>`;
-
-  // Alternate sides: connector and node are inside timeline-entry (not card-row)
-  // Left: card on right side, connector+node on left side (at axis)
-  // Right: connector+node on right side (at axis), card on left side
-  return `
-    <div class="timeline-entry" data-side="${side}">
-      ${side === 'left'
-        ? `<div class="timeline-card-row"><a href="${href}" class="timeline-card">${imgHtml}${cardBody}</a></div><div class="timeline-connector"></div><div class="timeline-node"><div class="timeline-dot"></div></div>`
-        : `<div class="timeline-node"><div class="timeline-dot"></div></div><div class="timeline-connector"></div><div class="timeline-card-row"><a href="${href}" class="timeline-card">${imgHtml}${cardBody}</a></div>`}
-    </div>`;
-}
-
-// ── Timeline page ────────────────────────────────────────────────────────
-
-function renderTimelinePage({ items, pageTitle, page }, template) {
-  const byYear = {};
+function renderTimelinePage(items: CompiledItem[], pageTitle: string, page: string, template: string): string {
+  const byYear: Record<number, CompiledItem[]> = {};
   for (const item of items) {
     const year = new Date(item.date).getFullYear();
     if (!byYear[year]) byYear[year] = [];
     byYear[year].push(item);
   }
-  const years = Object.keys(byYear).sort((a, b) => b - a);
+  const years = Object.keys(byYear).sort((a, b) => Number(b) - Number(a));
 
   let idx = 0;
   const timelineHtml = years.map(year => {
-    const entries = byYear[year].map(item => {
-      const side = idx % 2 === 0 ? 'left' : 'right';
+    const entries = byYear[Number(year)].map(item => {
+      const side: 'left' | 'right' = idx % 2 === 0 ? 'left' : 'right';
       idx++;
       return timelineEntry(item, side);
     }).join('');
@@ -152,26 +150,28 @@ function renderTimelinePage({ items, pageTitle, page }, template) {
   return applyTemplate(template, { title: `${pageTitle} — Memoria`, page, content });
 }
 
-// ── Homepage (stats + tag filter + recent timeline) ────────────────────
-
-function renderIndex({ blogs, vlogs, photos, all, siteConfig }, template) {
-  // Stats
-  const tagSet = new Set();
-  all.forEach(item => (item.tags || []).forEach(t => tagSet.add(t)));
+export function renderIndex(
+  { blogs, vlogs, photos, all, siteConfig }: {
+    blogs: CompiledItem[];
+    vlogs: CompiledItem[];
+    photos: CompiledItem[];
+    all: CompiledItem[];
+    siteConfig: { name?: string; icon?: string };
+  },
+  template: string
+): string {
+  const tagSet = new Set<string>();
+  all.forEach(item => (item.tags || []).forEach((t: string) => tagSet.add(t)));
   const sortedTags = Array.from(tagSet).sort();
   const tagsFilterHtml = sortedTags.map(t =>
     `<button class="tag-filter-btn" data-tag="${t}">${t}</button>`
   ).join('');
 
-  // Build all-items list for tag filtering
   const allItemsHtml = all.map(item => {
     const typeDir = { blog: 'blog', vlog: 'vlog', photo: 'photo' };
     const dir = typeDir[item.type] || 'blog';
     const href = `/${dir}/${slugify(item.title)}/`;
-    const typeLabel = { blog: '随笔', vlog: '影像', photo: '相册' };
-    // Blog: use cover or thumbnail only if non-empty; no image if none
-    // Vlog: use thumbnail if available
-    // Photo: use thumbnail if available
+    const typeLabel: Record<string, string> = { blog: '随笔', vlog: '影像', photo: '相册' };
     let imgUrl = '';
     if (item.type === 'blog' && item.cover) imgUrl = item.cover;
     else if (item.type === 'blog' && item.thumbnail) imgUrl = item.thumbnail;
@@ -197,7 +197,6 @@ function renderIndex({ blogs, vlogs, photos, all, siteConfig }, template) {
 
   const content = `
     <div class="home-page">
-      <!-- Hero Stats -->
       <section class="home-stats">
         <div class="home-stats-title">Memoria</div>
         <div class="home-stats-grid">
@@ -219,184 +218,72 @@ function renderIndex({ blogs, vlogs, photos, all, siteConfig }, template) {
           </div>
         </div>
       </section>
-
-      <!-- Tag Filter -->
       ${tagsFilterHtml ? `
       <div class="home-tag-filter" id="tagFilterBar">
         <button class="tag-filter-btn active" data-tag="all">全部</button>
         ${tagsFilterHtml}
       </div>` : ''}
-
-      <!-- All Items (filtered) -->
       <div class="home-items" id="homeItems">
         ${allItemsHtml}
       </div>
       <div class="scroll-sentinel" data-page="1"></div>
     </div>
-
     <style>
-      /* Home Stats */
-      .home-stats {
-        padding: 3.5rem 2rem 2rem;
-        max-width: 960px;
-        margin: 0 auto;
-        text-align: center;
-      }
-      .home-stats-title {
-        font-family: 'Georgia', serif;
-        font-size: clamp(2rem, 8vw, 3.5rem);
-        color: var(--color-accent);
-        margin-bottom: 2rem;
-        letter-spacing: -0.02em;
-      }
-      .home-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1rem;
-        max-width: 600px;
-        margin: 0 auto 2rem;
-      }
+      .home-stats { padding: 3.5rem 2rem 2rem; max-width: 960px; margin: 0 auto; text-align: center; }
+      .home-stats-title { font-family: 'Georgia', serif; font-size: clamp(2rem, 8vw, 3.5rem); color: var(--color-accent); margin-bottom: 2rem; letter-spacing: -0.02em; }
+      .home-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; max-width: 600px; margin: 0 auto 2rem; }
       @media (max-width: 500px) { .home-stats-grid { grid-template-columns: repeat(2, 1fr); } }
-      .stat-card {
-        background: var(--color-bg);
-        border: 1px solid var(--color-border);
-        border-radius: 12px;
-        padding: 1.2rem 1rem;
-        text-align: center;
-      }
-      .stat-number {
-        font-family: 'Georgia', serif;
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: var(--color-accent);
-        line-height: 1;
-        margin-bottom: 0.3rem;
-      }
-      .stat-label {
-        font-size: 0.8rem;
-        color: var(--color-text-muted);
-      }
-
-      /* Tag filter */
-      .home-tag-filter {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        justify-content: center;
-        padding: 0 1.5rem 1.5rem;
-        max-width: 960px;
-        margin: 0 auto;
-      }
-      .tag-filter-btn {
-        flex-shrink: 0;
-        background: var(--color-surface);
-        color: var(--color-text);
-        border: 1px solid transparent;
-        border-radius: 20px;
-        padding: 0.3rem 0.9rem;
-        font-size: 0.82rem;
-        cursor: pointer;
-        transition: all 0.2s;
-        white-space: nowrap;
-      }
-      .tag-filter-btn:hover, .tag-filter-btn.active {
-        background: var(--color-accent);
-        color: #fff;
-      }
-
-      /* Home items list */
-      .home-items {
-        max-width: 960px;
-        margin: 0 auto;
-        padding: 0 2rem 3rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-      }
+      .stat-card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.2rem 1rem; text-align: center; }
+      .stat-number { font-family: 'Georgia', serif; font-size: 2.2rem; font-weight: 700; color: var(--color-accent); line-height: 1; margin-bottom: 0.3rem; }
+      .stat-label { font-size: 0.8rem; color: var(--color-text-muted); }
+      .home-tag-filter { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; padding: 0 1.5rem 1.5rem; max-width: 960px; margin: 0 auto; }
+      .tag-filter-btn { flex-shrink: 0; background: var(--color-surface); color: var(--color-text); border: 1px solid transparent; border-radius: 20px; padding: 0.3rem 0.9rem; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+      .tag-filter-btn:hover, .tag-filter-btn.active { background: var(--color-accent); color: #fff; }
+      .home-items { max-width: 960px; margin: 0 auto; padding: 0 2rem 3rem; display: flex; flex-direction: column; gap: 1rem; }
       .home-item { border-radius: 12px; overflow: hidden; }
       .home-item.hidden { display: none; }
-      .home-item-link {
-        display: flex;
-        gap: 1rem;
-        background: var(--color-bg);
-        border: 1px solid var(--color-border);
-        border-radius: 12px;
-        overflow: hidden;
-        text-decoration: none;
-        color: inherit;
-        transition: border-color 0.2s, transform 0.2s;
-      }
+      .home-item-link { display: flex; gap: 1rem; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden; text-decoration: none; color: inherit; transition: border-color 0.2s, transform 0.2s; }
       .home-item-link:hover { border-color: var(--color-accent); transform: translateY(-2px); }
-      .home-item-thumb {
-        width: 120px;
-        height: 80px;
-        object-fit: cover;
-        flex-shrink: 0;
-      }
-      .home-item-thumb-placeholder {
-        width: 120px;
-        height: 80px;
-        background: var(--color-surface);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--color-text-muted);
-      }
-      .home-item-thumb-placeholder i svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 2; fill: none; }
+      .home-item-thumb { width: 120px; height: 80px; object-fit: cover; flex-shrink: 0; }
       .home-item-body { flex: 1; padding: 0.8rem 0.8rem 0.8rem 0; display: flex; flex-direction: column; justify-content: center; }
       .home-item-meta { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.25rem; }
       .home-item-type { font-size: 0.7rem; background: var(--color-surface); color: var(--color-accent-cool); padding: 0.1rem 0.5rem; border-radius: 4px; }
       .home-item-date { font-size: 0.72rem; color: var(--color-text-muted); }
       .home-item-title { font-size: 0.95rem; font-weight: 600; color: var(--color-text); line-height: 1.3; }
-
-      @media (max-width: 500px) {
-        .home-items { padding: 0 1rem 6rem; }
-        .home-item-thumb { width: 90px; height: 65px; }
-        .home-stats { padding: 2rem 1rem 1.5rem; }
-      }
+      @media (max-width: 500px) { .home-items { padding: 0 1rem 6rem; } .home-item-thumb { width: 90px; height: 65px; } .home-stats { padding: 2rem 1rem 1.5rem; } }
     </style>`;
 
   return applyTemplate(template, { title: '首页 — Memoria', page: 'home', content });
 }
 
-// ── Blogs ──────────────────────────────────────────────────────────────
-
-function renderBlogs({ blogs, siteConfig }, template) {
-  return renderTimelinePage({ items: blogs, pageTitle: '随笔', page: 'blogs' }, template);
+export function renderBlogs({ blogs, siteConfig }: { blogs: CompiledItem[]; siteConfig: { name?: string; icon?: string } }, template: string): string {
+  return renderTimelinePage(blogs, '随笔', 'blogs', template);
 }
 
-// ── Vlogs ───────────────────────────────────────────────────────────────
-
-function renderVlogs({ vlogs, siteConfig }, template) {
-  return renderTimelinePage({ items: vlogs, pageTitle: '影像', page: 'vlogs' }, template);
+export function renderVlogs({ vlogs, siteConfig }: { vlogs: CompiledItem[]; siteConfig: { name?: string; icon?: string } }, template: string): string {
+  return renderTimelinePage(vlogs, '影像', 'vlogs', template);
 }
 
-// ── Photos ─────────────────────────────────────────────────────────────
-
-function renderPhotos({ photos, siteConfig }, template) {
-  const photoItems = photos.map(p => ({
+export function renderPhotos({ photos, siteConfig }: { photos: CompiledItem[]; siteConfig: { name?: string; icon?: string } }, template: string): string {
+  const photoItems: PhotoItem[] = photos.map(p => ({
     ...p,
     description: p.description || (p.photos ? `${p.photos.length} 张照片` : ''),
   }));
-  return renderTimelinePage({ items: photoItems, pageTitle: '相册', page: 'photo' }, template);
+  return renderTimelinePage(photoItems, '相册', 'photo', template);
 }
 
-// ── About ───────────────────────────────────────────────────────────────
-
-function renderAbout({ aboutData, siteConfig }, template) {
+export function renderAbout({ aboutData, siteConfig }: { aboutData: string | null; siteConfig: { name?: string; icon?: string } }, template: string): string {
   const content = `<div class="about-body">${aboutData || '<p style="color:var(--color-text-muted);">暂无内容</p>'}</div>`;
   return applyTemplate(template, { title: '关于 — Memoria', page: 'about', content });
 }
 
-// ── Blog Detail ────────────────────────────────────────────────────────
-
-function renderBlogDetail(item, siblings, template) {
+function renderBlogDetail(item: CompiledItem, siblings: CompiledItem[], template: string): string {
   const dateFormatted = formatDate(item.date);
-  const tagsHtml = (item.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+  const tagsHtml = (item.tags || []).map((t: string) => `<span class="tag">${t}</span>`).join('');
   const idx = siblings.findIndex(s => slugify(s.title) === slugify(item.title));
   const prev = idx < siblings.length - 1 ? siblings[idx + 1] : null;
   const next = idx > 0 ? siblings[idx - 1] : null;
-  function itemHref(it) { return `/blog/${slugify(it.title)}/`; }
+  function itemHref(it: CompiledItem): string { return `/blog/${slugify(it.title)}/`; }
 
   let coverHtml = '';
   if (item.cover) coverHtml = `<img src="${item.cover}" alt="${item.title}" class="detail-cover" loading="lazy">`;
@@ -463,15 +350,13 @@ function renderBlogDetail(item, siblings, template) {
   return applyTemplate(template, { title: `${item.title} — Memoria`, page: 'blogs', content });
 }
 
-// ── Photo Detail ───────────────────────────────────────────────────────
-
-function renderPhotoDetail(item, siblings, template) {
+function renderPhotoDetail(item: CompiledItem, siblings: CompiledItem[], template: string): string {
   const dateFormatted = formatDate(item.date);
-  const tagsHtml = (item.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+  const tagsHtml = (item.tags || []).map((t: string) => `<span class="tag">${t}</span>`).join('');
   const idx = siblings.findIndex(s => slugify(s.title) === slugify(item.title));
   const prev = idx < siblings.length - 1 ? siblings[idx + 1] : null;
   const next = idx > 0 ? siblings[idx - 1] : null;
-  function itemHref(it) { return `/photo/${slugify(it.title)}/`; }
+  function itemHref(it: CompiledItem): string { return `/photo/${slugify(it.title)}/`; }
 
   if (!item.photos || item.photos.length === 0) {
     return applyTemplate(template, { title: `${item.title} — Memoria`, page: 'photo', content: `<div class="detail-page"><p>暂无照片</p></div>` });
@@ -497,15 +382,13 @@ function renderPhotoDetail(item, siblings, template) {
   return applyTemplate(template, { title: `${item.title} — Memoria`, page: 'photo', content });
 }
 
-// ── Vlog Detail ─────────────────────────────────────────────────────────
-
-function renderVlogDetail(item, siblings, template) {
+function renderVlogDetail(item: CompiledItem, siblings: CompiledItem[], template: string): string {
   const dateFormatted = formatDate(item.date);
-  const tagsHtml = (item.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+  const tagsHtml = (item.tags || []).map((t: string) => `<span class="tag">${t}</span>`).join('');
   const idx = siblings.findIndex(s => slugify(s.title) === slugify(item.title));
   const prev = idx < siblings.length - 1 ? siblings[idx + 1] : null;
   const next = idx > 0 ? siblings[idx - 1] : null;
-  function itemHref(it) { return `/vlog/${slugify(it.title)}/`; }
+  function itemHref(it: CompiledItem): string { return `/vlog/${slugify(it.title)}/`; }
 
   let videoHtml = '';
   if (item.video) {
@@ -531,19 +414,8 @@ function renderVlogDetail(item, siblings, template) {
   return applyTemplate(template, { title: `${item.title} — Memoria`, page: 'vlogs', content });
 }
 
-// ── Unified detail dispatcher ────────────────────────────────────────────
-
-function renderDetail(item, siblings, template) {
+export function renderDetail(item: CompiledItem, siblings: CompiledItem[], template: string): string {
   if (item.type === 'photo') return renderPhotoDetail(item, siblings, template);
   if (item.type === 'vlog') return renderVlogDetail(item, siblings, template);
   return renderBlogDetail(item, siblings, template);
 }
-
-module.exports = {
-  renderIndex,
-  renderBlogs,
-  renderVlogs,
-  renderPhotos,
-  renderAbout,
-  renderDetail,
-};
