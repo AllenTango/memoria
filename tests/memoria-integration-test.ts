@@ -122,6 +122,7 @@ function record(name: string, passed: boolean, duration: number, error?: string)
 
 async function main() {
   const startTime = Date.now();
+  if (!fs.existsSync(LOGS_DIR)) fs.mkdirSync(LOGS_DIR, { recursive: true });
   fs.writeFileSync(LOG_FILE, '');
 
   logSection('Memoria 完整测试开始');
