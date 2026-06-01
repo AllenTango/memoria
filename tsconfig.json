@@ -12,7 +12,9 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "declaration": false,
-    "sourceMap": false
+    "sourceMap": false,
+    "jsx": "react",
+    "allowSyntheticDefaultImports": true
   },
   "include": ["bin/**/*", "lib/**/*", "src/**/*"],
   "exclude": ["node_modules", "dist", "themes", "assets", "docs", "scripts", "tests"]

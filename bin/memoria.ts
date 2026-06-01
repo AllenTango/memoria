@@ -202,9 +202,9 @@ const commands: { [key: string]: () => void } = {
   tui       打开 TUI 入口界面
 
 TUI 模式:
-  memoria       打开 TUI 入口（新建/打开站点）
+  memoria        打开 TUI 入口（新建/打开站点）
   memoria tui   同上
-  memoria /new  打开新建站点向导
+  memoria /create 打开新建站点向导
   memoria /open 打开已有站点
 
 示例:
@@ -237,7 +237,7 @@ if (commands[normalizedCmd]) {
 } else if (normalizedCmd.startsWith('/')) {
   // Slash commands route to TUI
   const sub = normalizedCmd.slice(1);
-  if (sub === 'new' || sub === 'open') {
+  if (sub === 'create' || sub === 'open') {
     showHub().catch((e: Error) => { console.error(e.message); process.exit(1); });
   } else {
     console.error(`Unknown command: ${command}`);
