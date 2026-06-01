@@ -100,16 +100,17 @@ function Menu({ items, selected, onSelect }: { items: MenuItem[]; selected: numb
 
 // ── RecentList ──────────────────────────────────────────────────────────────
 
-function RecentList({ recents, onSelect, onBack }: {
+function RecentList({ recents, onSelect, onBack, onBrowse }: {
   recents: RecentProject[];
   onSelect: (root: string) => void;
   onBack: () => void;
+  onBrowse: () => void;
 }) {
   const [selected, setSelected] = useState(0);
 
   useInput((input, key) => {
     if (key.upArrow) setSelected(s => Math.max(0, s - 1));
-    else if (key.downArrow) setSelected(s => Math.min(recents.length, s + 1));
+    else if (key.downArrow) setSelected(s => Math.min(recents.length + 1, s + 1));
     else if (key.return) {
       if (selected < recents.length) onSelect(recents[selected].root);
       else onBack();
@@ -130,8 +131,11 @@ function RecentList({ recents, onSelect, onBack }: {
         );
       })}
       <Text color="grayDim">  ───</Text>
-      <Text color={selected === recents.length ? 'yellow' : 'grayDim'}>
-        {selected === recents.length ? '▶ ↩ 返回' : '  ↩ 返回'}
+      <Text color={selected === recents.length ? 'cyan' : 'grayDim'}>
+        {selected === recents.length ? '▶ 📂 浏览目录...' : '  📂 浏览目录...'}
+      </Text>
+      <Text color={selected === recents.length + 1 ? 'yellow' : 'grayDim'}>
+        {selected === recents.length + 1 ? '▶ ↩ 返回' : '  ↩ 返回'}
       </Text>
     </Box>
   );
@@ -344,7 +348,7 @@ function OutputLog({ lines }: { lines: string[] }) {
 
 // ── Main Hub ───────────────────────────────────────────────────────────────
 
-type Screen = 'main' | 'open' | 'create' | 'newContent';
+type Screen = 'main' | 'open' | 'create' | 'newContent' | 'browse';
 
 function Hub() {
   const [screen, setScreen] = useState<Screen>('main');
@@ -533,6 +537,7 @@ function Hub() {
           recents={recents}
           onSelect={root => openProject(root)}
           onBack={() => setScreen('main')}
+          onBrowse={() => setScreen('browse')}
         />
       </Box>
     );
@@ -545,6 +550,31 @@ function Hub() {
         <Text dimColor>项目: {currentProject}</Text>
         <Box marginBottom={1} />
         <NewContentWizard projectRoot={currentProject!} onComplete={() => setScreen('main')} />
+      </Box>
+    );
+  }
+
+  if (screen === 'browse') {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Logo />
+        <Text bold color="cyan">📂 打开目录</Text>
+        <Box marginBottom={1} />
+        <PathInput
+          label="输入目录路径后回车打开"
+          defaultValue=""
+          onSubmit={(dir) => {
+            if (fs.existsSync(dir) && isMemoriaProject(dir)) {
+              openProject(dir);
+            } else if (fs.existsSync(dir)) {
+              console.log(`\n${c(K.yellow, '⚠️  该目录不是 Memoria 项目')}\n`);
+              setScreen('open');
+            } else {
+              console.log(`\n${c(K.red, '❌ 目录不存在')}\n`);
+              setScreen('open');
+            }
+          }}
+        />
       </Box>
     );
   }
