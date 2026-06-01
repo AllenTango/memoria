@@ -110,6 +110,8 @@ function RecentList({ recents, onSelect, onBack }: {
   onBack: () => void;
 }) {
   const [selected, setSelected] = useState(0);
+  const [commandMode, setCommandMode] = useState(false);
+  const [commandInput, setCommandInput] = useState('');
 
   useInput((input, key) => {
     if (key.upArrow) setSelected(s => Math.max(0, s - 1));
@@ -349,7 +351,27 @@ function Hub() {
   const recents = getRecentProjects().slice(0, 3);
 
   useInput((input, key) => {
+    if (commandMode) {
+      if (key.return) {
+        executeCommand(commandInput.trim());
+        setCommandInput('');
+        setCommandMode(false);
+      } else if (key.backspace) {
+        setCommandInput(v => v.slice(0, -1));
+      } else if (key.escape) {
+        setCommandInput('');
+        setCommandMode(false);
+      } else if (input) {
+        setCommandInput(v => v + input);
+      }
+      return;
+    }
+
     if (screen === 'main') {
+      if (input === '/') {
+        setCommandMode(true);
+        return;
+      }
       if (key.upArrow) setSelected(s => Math.max(0, s - 1));
       else if (key.downArrow) setSelected(s => Math.min(2, s + 1));
       else if (key.return) handleMainSelect();
@@ -376,6 +398,31 @@ function Hub() {
     console.log(`\n📂 已打开: ${getProjectName(root)}`);
     console.log(`   ${root}\n`);
     setTimeout(() => setScreen('main'), 1500);
+  }
+
+  function executeCommand(cmd: string) {
+    if (cmd === 'create' || cmd === '/create') {
+      setScreen('create');
+    } else if (cmd === 'open' || cmd === '/open') {
+      setScreen('open');
+    } else if (cmd === 'exit' || cmd === 'quit' || cmd === '/exit' || cmd === '/quit') {
+      console.log('\n 再见！👋\n');
+      process.exit(0);
+    } else if (cmd === 'help' || cmd === '/help' || cmd === '?') {
+      showCommandHelp();
+    } else if (cmd) {
+      console.log(`\n${c(K.red, '❓ 未知命令: ' + cmd)}\n`);
+      showCommandHelp();
+    }
+  }
+
+  function showCommandHelp() {
+    console.log(`\n${c(K.cyan, '┌─ TUI 命令 ──────────────────────────')}`);
+    console.log(`│ ${c(K.green, '/create')}  新建站点`);
+    console.log(`│ ${c(K.blue, '/open')}    打开已有站点`);
+    console.log(`│ ${c(K.gray, '/help')}    显示帮助`);
+    console.log(`│ ${c(K.gray, '/exit')}    退出 TUI`);
+    console.log(`${c(K.cyan, '└────────────────────────────────────')}\n`);
   }
 
   if (screen === 'create') {
@@ -414,15 +461,22 @@ function Hub() {
         </>
       )}
 
-      <Menu
-        items={[
-          { label: '新建站点', emoji: '➕', color: 'green' },
-          { label: '打开已有站点', emoji: '📂', color: 'blue' },
-          { label: '退出', emoji: 'x', color: 'grayDim' },
-        ]}
-        selected={selected}
-        onSelect={setSelected}
-      />
+      {commandMode ? (
+        <Box flexDirection="column">
+          <Text color="cyan">{'>'} {commandInput}<Text color="grayDim">_</Text></Text>
+          <Text dimColor>按 Enter 执行，Esc 取消</Text>
+        </Box>
+      ) : (
+        <Menu
+          items={[
+            { label: '新建站点', emoji: '➕', color: 'green' },
+            { label: '打开已有站点', emoji: '📂', color: 'blue' },
+            { label: '退出', emoji: 'x', color: 'grayDim' },
+          ]}
+          selected={selected}
+          onSelect={setSelected}
+        />
+      )}
     </Box>
   );
 }
