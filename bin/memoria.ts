@@ -211,10 +211,7 @@ const commands: { [key: string]: () => void } = {
   tui       打开 TUI 入口界面
 
 TUI 模式:
-  memoria        打开 TUI 入口（新建/打开站点）
-  memoria tui   同上
-  memoria /create 打开新建站点向导
-  memoria /open 打开已有站点
+  memoria tui   打开 TUI 入口界面
 
 示例:
   memoria init my-blog
@@ -237,27 +234,7 @@ const normalizedCmd = command?.replace(/^--?/, '') || '';
 if (commands[normalizedCmd]) {
   commands[normalizedCmd]();
 } else if (!normalizedCmd || normalizedCmd === 'help') {
-  // No command or explicit help: show TUI hub when no project detected, else help
-  if (!siteDir && !normalizedCmd) {
-    (async () => {
-      const { showHub } = await dynamicImportHub();
-      await showHub();
-    })().catch((e: Error) => { console.error(e.message); process.exit(1); });
-  } else {
-    commands.help();
-  }
-} else if (normalizedCmd.startsWith('/')) {
-  // Slash commands route to TUI
-  const sub = normalizedCmd.slice(1);
-  if (sub === 'create' || sub === 'open') {
-    (async () => {
-      const { showHub } = await dynamicImportHub();
-      await showHub();
-    })().catch((e: Error) => { console.error(e.message); process.exit(1); });
-  } else {
-    console.error(`Unknown command: ${command}`);
-    process.exit(1);
-  }
+  commands.help();
 } else {
   console.error(`Unknown command: ${command}`);
   process.exit(1);
