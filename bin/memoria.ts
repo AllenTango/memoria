@@ -11,6 +11,7 @@ import { initSite } from '../lib/init';
 import { deploy } from '../lib/deploy';
 import { listThemes, pickTheme, createTheme } from '../lib/theme';
 import { syncSite } from '../lib/upgrade';
+import { showHub } from '../src/tui/hub';
 
 // 3. 工具函数
 function isSiteDir(dir: string): boolean {
@@ -176,6 +177,10 @@ const commands: { [key: string]: () => void } = {
     }).catch((e: Error) => { console.error(e.message); process.exit(1); });
   },
 
+  tui: () => {
+    showHub().catch((e: Error) => { console.error(e.message); process.exit(1); });
+  },
+
   help: () => {
     console.log(`Memoria CLI — 静态网站生成器
 
@@ -194,6 +199,13 @@ const commands: { [key: string]: () => void } = {
   deploy    交互式选择部署平台并配置
   upgrade   升级 memoria 全局 CLI（等同于 npm update -g memoria）
   sync      同步内置主题到当前站点
+  tui       打开 TUI 入口界面
+
+TUI 模式:
+  memoria       打开 TUI 入口（新建/打开站点）
+  memoria tui   同上
+  memoria /new  打开新建站点向导
+  memoria /open 打开已有站点
 
 示例:
   memoria init my-blog
@@ -204,15 +216,33 @@ const commands: { [key: string]: () => void } = {
   memoria theme
   memoria deploy
   memoria upgrade
-  memoria sync`);
+  memoria sync
+  memoria tui`);
   },
 };
 
 // 6. 分发
-if (commands[command]) {
-  commands[command]();
-} else if (!command || command === 'help') {
-  commands.help();
+// Normalize: strip leading dashes from command
+const normalizedCmd = command?.replace(/^--?/, '') || '';
+
+if (commands[normalizedCmd]) {
+  commands[normalizedCmd]();
+} else if (!normalizedCmd || normalizedCmd === 'help') {
+  // No command or explicit help: show TUI hub when no project detected, else help
+  if (!siteDir && !normalizedCmd) {
+    showHub().catch((e: Error) => { console.error(e.message); process.exit(1); });
+  } else {
+    commands.help();
+  }
+} else if (normalizedCmd.startsWith('/')) {
+  // Slash commands route to TUI
+  const sub = normalizedCmd.slice(1);
+  if (sub === 'new' || sub === 'open') {
+    showHub().catch((e: Error) => { console.error(e.message); process.exit(1); });
+  } else {
+    console.error(`Unknown command: ${command}`);
+    process.exit(1);
+  }
 } else {
   console.error(`Unknown command: ${command}`);
   process.exit(1);
