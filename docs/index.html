@@ -106,6 +106,21 @@ header nav { display: flex; align-items: center; gap: 14px; }
 header nav a { color: var(--text); text-decoration: none; font-size: 0.87rem; opacity: 0.8; }
 header nav a:hover { opacity: 1; text-decoration: underline; }
 
+.theme-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  border-radius: 6px;
+  transition: background 0.15s, color 0.2s;
+}
+.theme-btn:hover { background: var(--hover-bg); }
+
 
 
 /* ── Mobile hamburger ── */
@@ -263,7 +278,7 @@ header nav a:hover { opacity: 1; text-decoration: underline; }
     <div class="brand">📚 Memoria 文档 <span>/ 文档中心</span></div>
   </div>
   <nav>
-    <button id="theme-toggle-btn" onclick="toggleTheme()" title="切换主题">☀️</button>
+    <button id="theme-toggle-btn" onclick="toggleTheme()" class="theme-btn" title="切换主题">☀️</button>
     <a href="https://github.com/AllenTango/memoria" target="_blank">GitHub</a>
   </nav>
 </header>
