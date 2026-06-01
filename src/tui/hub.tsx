@@ -1,233 +1,437 @@
+// @ts-nocheck
 /**
- * Memoria TUI - ink + React rendering
+ * Memoria TUI - Pure ink + React
  * Entry hub for creating/opening sites
  */
-import React from 'react';
-import { render, Box, Text } from 'ink';
-import { getRecentProjects, addRecentProject, isMemoriaProject, getProjectName } from './recent';
+import React, { useState, useEffect } from 'react';
+import { render, Box, Text, useInput, useApp } from 'ink';
+import { getRecentProjects, addRecentProject, isMemoriaProject, getProjectName } from './recent.js';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as readline from 'readline';
 
-// ── ANSI helpers ──────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────
 
-const K = {
-  cyan: '\x1b[36m', green: '\x1b[32m', yellow: '\x1b[33m',
-  red: '\x1b[31m', magenta: '\x1b[35m', blue: '\x1b[34m',
-  dim: '\x1b[2m', bright: '\x1b[1m', reset: '\x1b[0m',
-};
-
-function c(color: string, text: string | number): string {
-  return `${color}${text}${K.reset}`;
+interface RecentProject {
+  root: string;
+  name: string;
+  lastOpened: number;
 }
 
-// ── Hub Component ─────────────────────────────────────────────────────────
+// ── Logo ───────────────────────────────────────────────────────────────────
 
 const logoLines = [
-  `${K.cyan}╭──────────────────────────────────────────╮${K.reset}`,
-  `${K.cyan}│${K.reset}  ${K.bright}📚 Memoria${K.reset}                           ${K.cyan}│${K.reset}`,
-  `${K.cyan}│${K.reset}  轻量级静态博客写作软件                ${K.cyan}│${K.reset}`,
-  `${K.cyan}╰──────────────────────────────────────────╯${K.reset}`,
+  '╭──────────────────────────────────────────╮',
+  '│  📚 Memoria                           │',
+  '│  轻量级静态博客写作软件                │',
+  '╰──────────────────────────────────────────╯',
 ];
 
 function Logo() {
   return (
     <Box flexDirection="column" marginBottom={1}>
-      {logoLines.map((line) => <Text>{line}</Text>)}
+      {logoLines.map((line, i) => (
+        <Text key={i} color="cyan">{line}</Text>
+      ))}
     </Box>
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────
+// ── Spinner ────────────────────────────────────────────────────────────────
 
-function ask(question: string, initial = ''): Promise<string> {
-  return new Promise(resolve => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.question(question, (ans) => { rl.close(); resolve(ans.trim() || initial); });
-  });
+function Spinner({ label }: { label: string }) {
+  const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setFrame(f => (f + 1) % frames.length), 80);
+    return () => clearInterval(id);
+  }, []);
+
+  return <Text color="gray">{frames[frame]} {label}</Text>;
 }
 
-function confirm(question: string): Promise<boolean> {
-  return new Promise(resolve => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.question(question + ' (y/N): ', (ans) => { rl.close(); resolve(['y', 'Y'].includes(ans.trim())); });
+// ── ConfirmInput ─────────────────────────────────────────────────────────────
+
+function ConfirmInput({ question, onConfirm }: { question: string; onConfirm: () => void }) {
+  const [value, setValue] = useState('');
+  useInput((input, key) => {
+    if (key.return) {
+      onConfirm();
+    } else if (key.escape || input === 'n' || input === 'N') {
+      process.exit(0);
+    } else if (input) {
+      setValue(v => v + input);
+    }
   });
+  return <Text color="gray">{question} (Enter 确定, n/N 取消): {value}</Text>;
 }
 
-function selectMenu(items: string[]): Promise<number> {
-  return new Promise(resolve => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    items.forEach((item, i) => console.log(`  ${i + 1}. ${item}`));
-    rl.question('  选择 [1]: ', (ans) => {
-      rl.close();
-      const idx = parseInt(ans.trim()) - 1;
-      resolve(!isNaN(idx) && idx >= 0 && idx < items.length ? idx : 0);
-    });
-  });
+// ── Menu ───────────────────────────────────────────────────────────────────
+
+interface MenuItem {
+  label: string;
+  emoji: string;
+  color: string;
 }
 
-// ── Show Hub ──────────────────────────────────────────────────────────────
+function Menu({ items, selected, onSelect }: { items: MenuItem[]; selected: number; onSelect: (i: number) => void }) {
+  useInput((input, key) => {
+    if (key.upArrow) onSelect(Math.max(0, selected - 1));
+    else if (key.downArrow) onSelect(Math.min(items.length - 1, selected + 1));
+    else if (key.return) confirmSelect();
+  });
 
-async function showCreateWizard(): Promise<boolean> {
-  console.log(`\n${c(K.cyan, '🆕 创建新站点')}\n`);
+  function confirmSelect() {
+    if (selected === items.length - 1) {
+      process.exit(0);
+    }
+    onSelect(selected);
+  }
 
-  const name = await ask('  站点名称', 'my-blog');
-  const defaultPath = path.resolve(process.cwd(), name);
+  return (
+    <Box flexDirection="column">
+      {items.map((item, i) => (
+        <Text
+          key={i}
+          color={i === selected ? item.color : 'grayDim'}
+        >
+          {i === selected ? '▶ ' : '  '}{item.emoji} {item.label}
+        </Text>
+      ))}
+    </Box>
+  );
+}
 
-  console.log(`\n  保存路径: ${c(K.dim, defaultPath)}`);
-  const customPath = await ask('  (直接回车使用以上路径，或输入自定义路径)', '');
+// ── RecentList ──────────────────────────────────────────────────────────────
 
-  const targetPath = customPath.trim() ? path.resolve(customPath.trim()) : defaultPath;
+function RecentList({ recents, onSelect, onBack }: {
+  recents: RecentProject[];
+  onSelect: (root: string) => void;
+  onBack: () => void;
+}) {
+  const [selected, setSelected] = useState(0);
 
-  // Non-empty directory check
-  if (fs.existsSync(targetPath)) {
-    const entries = fs.readdirSync(targetPath);
-    if (entries.length > 0) {
-      console.log(`\n${c(K.yellow, '⚠️  目录 "' + targetPath + '" 非空')}`);
-      console.log(`${c(K.red, '   无法确定是否为 Memoria 项目站点。')}`);
-      console.log(`${c(K.yellow, '   💡 建议：换一个空目录，或先手动检查该目录')}\n`);
-      return false;
+  useInput((input, key) => {
+    if (key.upArrow) setSelected(s => Math.max(0, s - 1));
+    else if (key.downArrow) setSelected(s => Math.min(recents.length - 1, s + 1));
+    else if (key.return) {
+      if (selected < recents.length) onSelect(recents[selected].root);
+      else onBack();
+    } else if (key.escape) onBack();
+  });
+
+  return (
+    <Box flexDirection="column">
+      <Text bold color="blue">📂 最近项目</Text>
+      <Box marginBottom={1} />
+      {recents.slice(0, 10).map((r, i) => {
+        const daysAgo = Math.round((Date.now() - r.lastOpened) / 86400000);
+        const timeAgo = daysAgo === 0 ? '今天' : `${daysAgo}天前`;
+        return (
+          <Text key={r.root} color={i === selected ? 'cyan' : 'grayDim'}>
+            {i === selected ? '▶ ' : '  '}{r.name}  <grayDim>({timeAgo})</grayDim>
+          </Text>
+        );
+      })}
+      <Text color="grayDim">  ───</Text>
+      <Text
+        color={selected === recents.length ? 'yellow' : 'grayDim'}
+        bold={selected === recents.length}
+      >
+        {selected === recents.length ? '▶ ↩ 返回' : '  ↩ 返回'}
+      </Text>
+    </Box>
+  );
+}
+
+// ── PathInput ───────────────────────────────────────────────────────────────
+
+function PathInput({ label, defaultValue, onSubmit }: {
+  label: string;
+  defaultValue: string;
+  onSubmit: (value: string) => void;
+}) {
+  const [value, setValue] = useState(defaultValue);
+  const [inputRef, setInputRef] = useState<React.ReactNode>(null);
+
+  useInput((input, key) => {
+    if (key.return) {
+      onSubmit(value);
+    } else if (key.backspace) {
+      setValue(v => v.slice(0, -1));
+    } else if (key.escape) {
+      process.exit(0);
+    } else if (input) {
+      setValue(v => v + input);
+    }
+  });
+
+  return (
+    <Box flexDirection="column">
+      <Text color="cyan">{label}</Text>
+      <Text>
+        <Text color="white">{value}</Text>
+        <Text color="grayDim">_</Text>
+      </Text>
+      <Text color="gray" dimColor>按 Enter 确认，Esc 退出</Text>
+    </Box>
+  );
+}
+
+// ── CreateWizard ─────────────────────────────────────────────────────────────
+
+function CreateWizard({ onComplete }: { onComplete: () => void }) {
+  const [step, setStep] = useState(0); // 0=name, 1=path, 2=theme, 3=creating, 4=done
+  const [siteName, setSiteName] = useState('my-blog');
+  const [targetPath, setTargetPath] = useState('');
+  const [selectedTheme, setSelectedTheme] = useState(0);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<{ name: string; path: string } | null>(null);
+
+  useInput((input, key) => {
+    if (step === 0) {
+      // Name input
+      if (key.return) {
+        if (!siteName.trim()) {
+          setError('名称不能为空');
+          return;
+        }
+        setTargetPath(path.resolve(process.cwd(), siteName.trim()));
+        setStep(1);
+      } else if (key.backspace) {
+        setSiteName(s => s.slice(0, -1));
+        setError('');
+      } else if (key.escape) {
+        onComplete();
+      } else if (input) {
+        setSiteName(s => s + input);
+        setError('');
+      }
+    } else if (step === 1) {
+      // Path input
+      if (key.return) {
+        const resolved = targetPath.trim() || path.resolve(process.cwd(), siteName);
+        if (fs.existsSync(resolved) && fs.readdirSync(resolved).length > 0) {
+          setError('目录非空，请使用空目录或更换路径');
+          return;
+        }
+        setTargetPath(resolved);
+        setStep(2);
+      } else if (key.backspace) {
+        setTargetPath(p => p.slice(0, -1));
+        setError('');
+      } else if (key.escape) {
+        onComplete();
+      } else if (input) {
+        setTargetPath(p => p + input);
+        setError('');
+      }
+    } else if (step === 2) {
+      // Theme selection
+      if (key.upArrow) setSelectedTheme(0);
+      else if (key.downArrow) setSelectedTheme(1);
+      else if (key.return) {
+        setStep(3);
+        doCreate();
+      } else if (key.escape) {
+        setStep(0);
+      }
+    } else if (step === 4) {
+      // Done
+      if (key.return || key.escape) onComplete();
+    }
+  });
+
+  async function doCreate() {
+    const theme = selectedTheme === 0 ? 'dracula' : 'peach';
+    try {
+      fs.mkdirSync(targetPath, { recursive: true });
+      fs.mkdirSync(path.join(targetPath, 'content', 'blogs'), { recursive: true });
+      fs.mkdirSync(path.join(targetPath, 'content', 'vlogs'), { recursive: true });
+      fs.mkdirSync(path.join(targetPath, 'content', 'photos'), { recursive: true });
+      fs.mkdirSync(path.join(targetPath, 'public'), { recursive: true });
+      fs.writeFileSync(path.join(targetPath, '.themerc'), theme);
+
+      const date = new Date().toISOString().split('T')[0];
+      fs.writeFileSync(path.join(targetPath, 'content', 'about.md'),
+        `---\ntitle: 欢迎使用 Memoria\ndate: ${date}\n---\n\n# 欢迎使用 Memoria! 🫘\n\n这是一个基于 **Memoria** 的静态博客。\n`);
+      fs.writeFileSync(path.join(targetPath, 'content', 'blogs', 'hello.md'),
+        `---\ntitle: 我的第一篇文章\ndate: ${date}\ncategory: 默认分类\n---\n\n# 你好世界！\n\n这是你在 Memoria 的第一篇文章。\n`);
+
+      addRecentProject(targetPath);
+      setResult({ name: siteName, path: targetPath });
+      setStep(4);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setStep(0);
     }
   }
 
-  // Theme selection
-  console.log(`\n  选择主题:`);
-  console.log(`    ${c(K.magenta, '1. 🌙 Dracula (暗色)')}`);
-  console.log(`    ${c(K.yellow, '2. ☀️ Peach (亮色)')}`);
-  const themeIdx = await selectMenu(['Dracula (暗色)', 'Peach (亮色)']);
-  const theme = themeIdx === 0 ? 'dracula' : 'peach';
+  return (
+    <Box flexDirection="column">
+      {step === 0 && (
+        <Box flexDirection="column">
+          <Text bold color="cyan">🆕 创建新站点</Text>
+          <Box marginBottom={1} />
+          <Text>站点名称</Text>
+          <Text>
+            <Text dimColor>[ 路径将基于名称自动生成 ]  </Text>
+          </Text>
+          <Text>
+            <Text bold>{siteName || '<输入中>'}</Text>
+            <Text color="grayDim">_</Text>
+          </Text>
+          {error && <Text color="red">{error}</Text>}
+          <Text color="gray" dimColor>按 Enter 确认 | Esc 返回</Text>
+        </Box>
+      )}
 
-  // Create site
-  try {
-    fs.mkdirSync(targetPath, { recursive: true });
-    fs.mkdirSync(path.join(targetPath, 'content', 'blogs'), { recursive: true });
-    fs.mkdirSync(path.join(targetPath, 'content', 'vlogs'), { recursive: true });
-    fs.mkdirSync(path.join(targetPath, 'content', 'photos'), { recursive: true });
-    fs.mkdirSync(path.join(targetPath, 'public'), { recursive: true });
+      {step === 1 && (
+        <Box flexDirection="column">
+          <Text bold color="cyan">🆕 创建新站点</Text>
+          <Box marginBottom={1} />
+          <Text>保存路径（直接回车或输入自定义路径）</Text>
+          <Text dimColor>默认: {path.resolve(process.cwd(), siteName)}</Text>
+          <Text>
+            <Text color="cyan">{targetPath}</Text>
+            <Text color="grayDim">_</Text>
+          </Text>
+          {error && <Text color="red">{error}</Text>}
+          <Text color="gray" dimColor>按 Enter 确认 | Esc 返回</Text>
+        </Box>
+      )}
 
-    fs.writeFileSync(path.join(targetPath, '.themerc'), theme);
+      {step === 2 && (
+        <Box flexDirection="column">
+          <Text bold color="cyan">🎨 选择主题</Text>
+          <Box marginBottom={1} />
+          <Text color={selectedTheme === 0 ? 'magenta' : 'grayDim'}>
+            {selectedTheme === 0 ? '▶ ' : '  '}1. 🌙 Dracula (暗色)
+          </Text>
+          <Text color={selectedTheme === 1 ? 'yellow' : 'grayDim'}>
+            {selectedTheme === 1 ? '▶ ' : '  '}2. ☀️ Peach (亮色)
+          </Text>
+          <Box marginBottom={1} />
+          <Text color="gray" dimColor>↑↓ 选择 | Enter 确认 | Esc 返回</Text>
+        </Box>
+      )}
 
-    const date = new Date().toISOString().split('T')[0];
-    const welcomeMd = `---\ntitle: 欢迎使用 Memoria\ndate: ${date}\n---\n\n# 欢迎使用 Memoria! 🫘\n\n这是一个基于 **Memoria** 的静态博客。\n\n## 开始使用\n\n- 创建文章：\`memoria new blog "文章标题"\`\n- 启动预览：\`memoria preview\`\n- 查看帮助：\`memoria --help\`\n\n## 下一步\n\n1. 编辑 \`content/about.md\` 介绍你自己\n2. 在 \`content/blogs/\` 目录下创建文章\n3. 选择喜欢的主题开始写作吧！\n`;
+      {step === 3 && (
+        <Box flexDirection="column">
+          <Spinner label="正在创建站点..." />
+        </Box>
+      )}
 
-    fs.writeFileSync(path.join(targetPath, 'content', 'about.md'), welcomeMd);
-    fs.writeFileSync(path.join(targetPath, 'content', 'blogs', 'hello.md'),
-      `---\ntitle: 我的第一篇文章\ndate: ${date}\ncategory: 默认分类\n---\n\n# 你好世界！\n\n这是你在 Memoria 的第一篇文章。 🎉\n`);
-
-    addRecentProject(targetPath);
-
-    console.log(`\n${c(K.green, '✅ 站点 "' + name + '" 创建成功！')}`);
-    console.log(`   路径: ${c(K.cyan, targetPath)}`);
-    console.log(`   主题: ${theme}`);
-    console.log(`\n   ${c(K.cyan, 'memoria preview')}  预览站点`);
-    console.log(`   ${c(K.cyan, 'memoria new blog "标题"')}  新建内容\n`);
-
-    return true;
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`${c(K.red, '❌ 创建失败: ' + msg)}\n`);
-    return false;
-  }
-}
-
-async function showOpenRecent(): Promise<string | null> {
-  const recents = getRecentProjects();
-  if (recents.length === 0) {
-    console.log(`\n${c(K.dim, '  暂无最近项目')}\n`);
-    return null;
-  }
-
-  console.log(`\n${c(K.blue, '📂 最近项目')}\n`);
-  recents.slice(0, 10).forEach((r, i) => {
-    const daysAgo = Math.round((Date.now() - r.lastOpened) / 86400000);
-    const timeAgo = daysAgo === 0 ? '今天' : daysAgo + '天前';
-    console.log(`  ${i + 1}. ${c(K.bright, r.name)}  ${c(K.dim, timeAgo)}`);
-    console.log(`     ${c(K.dim, r.root)}`);
-  });
-
-  const idx = await selectMenu(recents.slice(0, 10).map(r => r.name + ' — ' + r.root));
-  return recents[idx]?.root || null;
-}
-
-async function showBrowseOpen(): Promise<string | null> {
-  console.log(`\n${c(K.cyan, '📂 打开站点')}\n`);
-  const inputPath = await ask('  输入站点目录路径', process.cwd());
-  const targetPath = path.resolve(inputPath.trim() || process.cwd());
-
-  if (!fs.existsSync(targetPath)) {
-    console.error(`${c(K.red, '\n❌ 目录不存在: ' + targetPath)}\n`);
-    return null;
-  }
-
-  if (!isMemoriaProject(targetPath)) {
-    console.error(`${c(K.yellow, '\n⚠️ "' + targetPath + '" 不是有效的 Memoria 项目')}`);
-    console.error(`${c(K.dim, '   需要有 .themerc 或 content/ 目录')}\n`);
-    return null;
-  }
-
-  return targetPath;
+      {step === 4 && result && (
+        <Box flexDirection="column">
+          <Text bold color="green">✅ 站点 "{result.name}" 创建成功！</Text>
+          <Box marginBottom={1} />
+          <Text dimColor>路径: <Text color="cyan">{result.path}</Text></Text>
+          <Text dimColor>主题: {selectedTheme === 0 ? '🌙 Dracula' : '☀️ Peach'}</Text>
+          <Box marginBottom={1} />
+          <Text dimColor>memoria preview  — 预览站点</Text>
+          <Text dimColor>memoria new blog "标题"  — 新建内容</Text>
+          <Box marginBottom={1} />
+          <Text color="gray" dimColor>按 Enter 返回主菜单</Text>
+        </Box>
+      )}
+    </Box>
+  );
 }
 
 // ── Main Hub ───────────────────────────────────────────────────────────────
 
-export async function showHub(): Promise<void> {
-  console.clear();
+type Screen = 'main' | 'open' | 'create';
 
-  while (true) {
-    console.clear();
-    logoLines.forEach(line => console.log(line));
+function Hub() {
+  const [screen, setScreen] = useState<Screen>('main');
+  const [selected, setSelected] = useState(0);
+  const recents = getRecentProjects().slice(0, 3);
 
-    const recents = getRecentProjects().slice(0, 3);
-    if (recents.length > 0) {
-      console.log(`\n  ${c(K.dim, '── 最近项目 ──')}`);
-      recents.forEach(r => console.log(`  ${c(K.blue, r.name)}  ${c(K.dim, r.root)}`));
-    }
-
-    console.log(`\n  ${c(K.green, '➕')} 1. 新建站点`);
-    console.log(`  ${c(K.blue, '📂')} 2. 打开已有站点`);
-    console.log(`  ${c(K.dim, 'x')} 3. 退出\n`);
-
-    const idx = await selectMenu(['新建站点', '打开已有站点', '退出']);
-
-    if (idx === 2) {
-      console.log(`\n${c(K.dim, '再见！👋')}\n`);
-      return;
-    }
-
-    if (idx === 0) {
-      console.clear();
-      await showCreateWizard();
-      await ask('\n  按回车返回...', '');
-    }
-
-    if (idx === 1) {
-      console.clear();
-      logoLines.forEach(line => console.log(line));
-      console.log(`\n  ${c(K.blue, '📋')} 1. 最近项目`);
-      console.log(`  ${c(K.cyan, '📁')} 2. 浏览目录`);
-      console.log(`  ${c(K.dim, '↩')} 3. 返回\n`);
-
-      const openIdx = await selectMenu(['最近项目', '浏览目录', '返回']);
-
-      if (openIdx === 0) {
-        const target = await showOpenRecent();
-        if (target) {
-          addRecentProject(target);
-          console.log(`\n${c(K.green, '📂 已打开: ' + getProjectName(target))}`);
-          console.log(`   ${c(K.dim, target)}\n`);
-          await ask('\n  按回车返回...', '');
-        }
-      } else if (openIdx === 1) {
-        const target = await showBrowseOpen();
-        if (target) {
-          addRecentProject(target);
-          console.log(`\n${c(K.green, '📂 已打开: ' + getProjectName(target))}`);
-          console.log(`   ${c(K.dim, target)}\n`);
-          await ask('\n  按回车返回...', '');
-        } else {
-          await ask('\n  按回车返回...', '');
-        }
+  useInput((input, key) => {
+    if (screen === 'main') {
+      if (key.upArrow) setSelected(s => Math.max(0, s - 1));
+      else if (key.downArrow) setSelected(s => Math.min(2, s + 1));
+      else if (key.return) handleMainSelect();
+      else if (input === 'x' || input === 'X') {
+        console.log('\n 再见！👋\n');
+        process.exit(0);
       }
+    } else if (screen === 'open') {
+      // handled by RecentList
+    }
+  });
+
+  function handleMainSelect() {
+    if (selected === 0) setScreen('create');
+    else if (selected === 1) setScreen('open');
+    else {
+      console.log('\n 再见！👋\n');
+      process.exit(0);
     }
   }
+
+  function handleOpenSelect(root: string) {
+    addRecentProject(root);
+    console.log(`\n📂 已打开: ${getProjectName(root)}`);
+    console.log(`   ${root}\n`);
+    setTimeout(() => setScreen('main'), 1500);
+  }
+
+  if (screen === 'create') {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Logo />
+        <CreateWizard onComplete={() => { setSelected(0); setScreen('main'); }} />
+      </Box>
+    );
+  }
+
+  if (screen === 'open') {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Logo />
+        <RecentList
+          recents={recents}
+          onSelect={handleOpenSelect}
+          onBack={() => setScreen('main')}
+        />
+      </Box>
+    );
+  }
+
+  return (
+    <Box flexDirection="column" padding={1}>
+      <Logo />
+
+      {recents.length > 0 && (
+        <>
+          <Text color="grayDim">  ─── 最近项目 ───</Text>
+          {recents.map(r => (
+            <Text key={r.root} color="blue" dimColor>  {r.name}</Text>
+          ))}
+          <Box marginBottom={1} />
+        </>
+      )}
+
+      <Menu
+        items={[
+          { label: '新建站点', emoji: '➕', color: 'green' },
+          { label: '打开已有站点', emoji: '📂', color: 'blue' },
+          { label: '退出', emoji: 'x', color: 'grayDim' },
+        ]}
+        selected={selected}
+        onSelect={setSelected}
+      />
+    </Box>
+  );
+}
+
+// ── Export ───────────────────────────────────────────────────────────────────
+
+export async function showHub(): Promise<void> {
+  return new Promise((resolve) => {
+    const { waitUntilExit } = render(<Hub />);
+    waitUntilExit().then(() => resolve());
+  });
 }

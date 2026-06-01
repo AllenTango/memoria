@@ -1,13 +1,13 @@
 {
   "name": "memoria",
   "version": "1.0.0",
-  "description": "轻量级静态博客系统，支持文章/视频/相册三种内容形态",
+  "description": "\u8f7b\u91cf\u7ea7\u9759\u6001\u535a\u5ba2\u7cfb\u7edf\uff0c\u652f\u6301\u6587\u7ae0/\u89c6\u9891/\u76f8\u518c\u4e09\u79cd\u5185\u5bb9\u5f62\u6001",
   "main": "dist/src/index.js",
   "bin": {
     "memoria": "dist/bin/memoria.js"
   },
   "scripts": {
-    "build": "npx tsc && node dist/bin/memoria.js"
+    "build": "npx tsc && node scripts/build-tui.mjs"
   },
   "keywords": [
     "static-site-generator",
@@ -24,11 +24,14 @@
     "ink": "^7.0.5",
     "marked": "^12.0.0",
     "prompts": "^2.4.2",
-    "react": "^19.2.6"
+    "react": "^19.2.6",
+    "react-devtools-core": "^7.0.1"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
+    "esbuild": "^0.28.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"
-  }
+  },
+  "type": "module"
 }

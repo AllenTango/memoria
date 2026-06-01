@@ -11,7 +11,6 @@ import { initSite } from '../lib/init';
 import { deploy } from '../lib/deploy';
 import { listThemes, pickTheme, createTheme } from '../lib/theme';
 import { syncSite } from '../lib/upgrade';
-import { showHub } from '../src/tui/hub';
 
 // 3. 工具函数
 function isSiteDir(dir: string): boolean {
@@ -43,6 +42,13 @@ if (args[0] === '--version' || args[0] === '-v') {
 
 // Run node version check
 checkNodeVersion();
+
+// Dynamic import helper for ESM-only modules (e.g. ink TUI)
+async function dynamicImportHub() {
+  const { showHub } = await import('../src/tui/hub.js');
+  return { showHub };
+}
+
 
 // 6. 命令映射
 const commands: { [key: string]: () => void } = {
@@ -177,8 +183,11 @@ const commands: { [key: string]: () => void } = {
     }).catch((e: Error) => { console.error(e.message); process.exit(1); });
   },
 
-  tui: () => {
-    showHub().catch((e: Error) => { console.error(e.message); process.exit(1); });
+  tui: async () => {
+    await (async () => {
+      const { showHub } = await dynamicImportHub();
+      await showHub();
+    })().catch((e: Error) => { console.error(e.message); process.exit(1); });
   },
 
   help: () => {
@@ -230,7 +239,10 @@ if (commands[normalizedCmd]) {
 } else if (!normalizedCmd || normalizedCmd === 'help') {
   // No command or explicit help: show TUI hub when no project detected, else help
   if (!siteDir && !normalizedCmd) {
-    showHub().catch((e: Error) => { console.error(e.message); process.exit(1); });
+    (async () => {
+      const { showHub } = await dynamicImportHub();
+      await showHub();
+    })().catch((e: Error) => { console.error(e.message); process.exit(1); });
   } else {
     commands.help();
   }
@@ -238,7 +250,10 @@ if (commands[normalizedCmd]) {
   // Slash commands route to TUI
   const sub = normalizedCmd.slice(1);
   if (sub === 'create' || sub === 'open') {
-    showHub().catch((e: Error) => { console.error(e.message); process.exit(1); });
+    (async () => {
+      const { showHub } = await dynamicImportHub();
+      await showHub();
+    })().catch((e: Error) => { console.error(e.message); process.exit(1); });
   } else {
     console.error(`Unknown command: ${command}`);
     process.exit(1);

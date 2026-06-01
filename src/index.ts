@@ -18,7 +18,6 @@ import {
   renderAbout,
   renderDetail,
 } from './renderer';
-import { showHub } from './tui/hub';
 import { addRecentProject, isMemoriaProject, getProjectName } from './tui/recent';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -345,7 +344,8 @@ async function main() {
       addRecentProject(rootDir);
       await helpCommand([], createContext(rootDir));
     } else {
-      await showHub();
+      const { showHub } = await import('./tui/hub.js');
+        await showHub();
     }
     return;
   }
@@ -358,6 +358,7 @@ async function main() {
     switch (cmd) {
       case 'new':
       case 'open': {
+        const { showHub } = await import('./tui/hub.js');
         await showHub();
         return;
       }
