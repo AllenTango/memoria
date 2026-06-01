@@ -6,6 +6,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as http from 'http';
+import { spawn } from 'child_process';
 import matter from 'gray-matter';
 import { marked } from 'marked';
 import { ensureDir, writeFile, slugify } from './utils';
@@ -323,7 +324,7 @@ async function newContentCommand(args: string[], ctx: Context): Promise<void> {
   const editor = process.env.MEMORIA_EDITOR || process.env.EDITOR;
   if (editor) {
     console.log('\n📝 用编辑器打开...');
-    const { spawn } = require('child_process');
+    
     spawn(editor, [filePath], { stdio: 'inherit' });
   }
 }
