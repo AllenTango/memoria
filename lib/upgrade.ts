@@ -4,7 +4,7 @@
  */
 import * as path from 'path';
 import * as fs from 'fs';
-import * as readline from 'readline';
+import { ask } from './prompt';
 
 const PKG_ROOT = path.resolve(__dirname, '..', '..');
 const BUILT_IN_THEMES_DIR = path.join(PKG_ROOT, 'themes');
@@ -32,16 +32,6 @@ function getBuiltInThemeNames(): string[] {
   return fs.readdirSync(BUILT_IN_THEMES_DIR).filter(name => {
     const themePath = path.join(BUILT_IN_THEMES_DIR, name);
     return fs.statSync(themePath).isDirectory();
-  });
-}
-
-function ask(question: string): Promise<string> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise(resolve => {
-    rl.question(question, (answer: string) => {
-      rl.close();
-      resolve(answer.trim().toLowerCase());
-    });
   });
 }
 

@@ -1,7 +1,8 @@
 {
   "name": "memoria",
   "version": "1.0.0",
-  "description": "\u8f7b\u91cf\u7ea7\u9759\u6001\u535a\u5ba2\u7cfb\u7edf\uff0c\u652f\u6301\u6587\u7ae0/\u89c6\u9891/\u76f8\u518c\u4e09\u79cd\u5185\u5bb9\u5f62\u6001",
+  "type": "module",
+  "description": "轻型静态博客系统，支持文章/视讯/相册三种内容形态",
   "main": "dist/src/index.js",
   "bin": {
     "memoria": "dist/bin/memoria.js"

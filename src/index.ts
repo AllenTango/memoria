@@ -6,6 +6,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as http from 'http';
+import * as url from 'url';
 import { spawn } from 'child_process';
 import matter from 'gray-matter';
 import { marked } from 'marked';
@@ -101,7 +102,9 @@ function resolveRootDir(): string {
 
   if (rootArg) return path.resolve(rootArg);
 
-  const defaultRootDir = path.resolve(__dirname, '..');
+  // Start from cwd, not __dirname — __dirname points to the installed module location,
+  // but the site root is wherever the user ran the command
+  const defaultRootDir = process.cwd();
   const themercCheck = path.join(defaultRootDir, '.themerc');
   if (fs.existsSync(themercCheck)) return defaultRootDir;
 
@@ -236,6 +239,10 @@ async function previewCommand(args: string[], ctx: Context): Promise<void> {
     addRecentProject(rootDir);
   });
 
+  // Build once before serving
+  await buildCommand([], ctx);
+
+
   const watchMode = args.includes('--watch');
   if (watchMode && fs.existsSync(contentDir)) {
     fs.watch(contentDir, { recursive: true }, () => {
@@ -329,7 +336,7 @@ async function newContentCommand(args: string[], ctx: Context): Promise<void> {
   }
 }
 
-// ── Main dispatch ─────────────────────────────────────────────────────────
+export { buildCommand, previewCommand, newContentCommand };
 
 async function main() {
   const args = process.argv.slice(2);
@@ -345,7 +352,7 @@ async function main() {
       addRecentProject(rootDir);
       await helpCommand([], createContext(rootDir));
     } else {
-      const { showHub } = await import('./tui/hub.js');
+      const { showHub } = await import('./tui/hub');
         await showHub();
     }
     return;
@@ -359,7 +366,7 @@ async function main() {
     switch (cmd) {
       case 'new':
       case 'open': {
-        const { showHub } = await import('./tui/hub.js');
+        const { showHub } = await import('./tui/hub');
         await showHub();
         return;
       }
@@ -414,7 +421,13 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error('❌ Error: ' + err.message);
-  process.exit(1);
-});
+// Only run main() when this file is executed directly as src/index (not imported into bin bundle)
+// When bundled, the URL ends with dist/bin/memoria.js, not dist/src/index.js
+const isDirectRun = import.meta.url.endsWith('/dist/src/index.js') ||
+                   import.meta.url.endsWith('/dist/src/index.ts');
+if (isDirectRun) {
+  main().catch(err => {
+    console.error('❌ Error: ' + err.message);
+    process.exit(1);
+  });
+}

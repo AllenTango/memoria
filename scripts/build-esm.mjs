@@ -22,24 +22,31 @@ const libOptions = {
   jsx: 'automatic',
   jsxImportSource: 'react',
   banner: { js: '' },
-  inject: [path.join(rootDir, 'esbuild-shim.js')],
 };
 
 /**
  * Compile a directory of .ts files to ESM .js in dist/
- * Handles __dirname/__filename via inject shim
  */
 async function compileDir(entryDir, outSubdir) {
   const entries = [];
   const absSrc = path.join(rootDir, entryDir);
 
-  // Find all .ts files recursively (exclude tui which is handled separately)
+  // Find all .ts/.tsx files recursively (exclude tui subdirs but include recent.ts)
   function walk(dir) {
     for (const entry of fs.readdirSync(dir)) {
       const full = path.join(dir, entry);
       if (fs.statSync(full).isDirectory()) {
-        if (entry !== 'tui') walk(full);
-      } else if (entry.endsWith('.ts') && !entry.startsWith('.')) {
+        if (entry === 'tui') {
+          // Only process recent.ts (plain TS, no JSX) in tui/
+          for (const sub of fs.readdirSync(full)) {
+            if (sub === 'recent.ts') {
+              entries.push(path.join(full, sub));
+            }
+          }
+        } else {
+          walk(full);
+        }
+      } else if ((entry.endsWith('.ts') || entry.endsWith('.tsx')) && !entry.startsWith('.')) {
         entries.push(full);
       }
     }
@@ -52,7 +59,7 @@ async function compileDir(entryDir, outSubdir) {
   // Compile each entry individually
   for (const entry of entries) {
     const rel = path.relative(absSrc, entry);
-    const outFile = path.join(outDir, rel.replace(/\.ts$/, '.js'));
+    const outFile = path.join(outDir, rel.replace(/\.tsx?$/, '.js'));
 
     // Ensure output subdir exists
     const entryOutDir = path.dirname(outFile);
@@ -85,7 +92,6 @@ await esbuild.build({
   packages: 'external',
   jsx: 'automatic',
   jsxImportSource: 'react',
-  inject: [path.join(rootDir, 'esbuild-shim.js')],
 });
 console.log('✓ bin/memoria.ts → dist/bin/memoria.js (ESM bundle)');
 
@@ -104,6 +110,30 @@ await esbuild.build({
   external: ['react-devtools-core'],
 });
 console.log('✓ src/tui/hub.tsx → dist/src/tui/hub.js (ESM + ink bundle)');
+
+// ── Post-process: add .js extension to all relative ESM imports ─────────────
+function fixJsExtensions(dir) {
+  for (const file of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, file.name);
+    if (file.isDirectory()) { fixJsExtensions(full); continue; }
+    if (!file.name.endsWith('.js')) continue;
+    let src = fs.readFileSync(full, 'utf8');
+    const fixed = src.replace(/from "(\.[^"]+?)";/g, (m, imp) => {
+      if (imp.endsWith('.js')) return m;          // already has extension
+      return `from "${imp}.js";`;
+    }).replace(/from '(\.[^']+?)';/g, (m, imp) => {
+      if (imp.endsWith('.js')) return m;
+      return `from '${imp}.js';`;
+    });
+    if (fixed !== src) {
+      fs.writeFileSync(full, fixed);
+      console.log(`  patched: ${full}`);
+    }
+  }
+}
+
+fixJsExtensions(path.join(OUT, 'src'));
+fixJsExtensions(path.join(OUT, 'lib'));
 
 console.log('\n✅ Build complete!');
 console.log('  dist/lib/           — ESM');
