@@ -3,7 +3,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
-import { C } from '../core/theme';
+import { C } from '../contexts/TUIContext';
 
 export function Spinner({ label }: { label: string }): React.ReactElement {
   const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];

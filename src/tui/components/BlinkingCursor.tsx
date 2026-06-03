@@ -3,7 +3,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Text } from 'ink';
-import { C } from '../core/theme';
+import { C } from '../contexts/TUIContext';
 
 export function BlinkingCursor(): React.ReactElement {
   const [visible, setVisible] = useState(true);
