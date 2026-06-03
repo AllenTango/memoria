@@ -34,6 +34,7 @@ declare module 'ink' {
     marginLeft?: number;
     marginRight?: number;
     gap?: number;
+    flexWrap?: string;
     key?: string | number;
     onClick?: () => void;
   }
