@@ -102,14 +102,14 @@ async function syncSite(siteRoot: string): Promise<boolean> {
   if (modifiedThemes.includes(currentTheme)) {
     console.log(`\n⚠️  警告：当前使用的主题 "${currentTheme}" 已被修改！`);
     console.log(`   继续将用最新版覆盖，是否确认？ [y/N]`);
-    const confirm = await ask('> ');
+    const confirm = await ask('继续?', []);
     if (confirm !== 'y' && confirm !== 'yes') {
       console.log('已取消。');
       return false;
     }
   } else if (existingBuiltIn.length > 0) {
     console.log(`\n将同步 ${existingBuiltIn.length} 个内置主题到站点，是否继续？ [Y/n]`);
-    const confirm = await ask('> ');
+    const confirm = await ask('继续?', []);
     if (confirm === 'n' || confirm === 'no') {
       console.log('已取消。');
       return false;

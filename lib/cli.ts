@@ -6,9 +6,6 @@ import { spawn } from 'child_process';
 import { createContext, buildSite } from './build.js';
 import { createContent, type ContentType } from './content.js';
 import { isMemoriaProject } from './recent.js';
-import { helpCommand } from './help.js';
-
-export { helpCommand, newContentCommand };
 
 // ── Help command ─────────────────────────────────────────────────────────────
 

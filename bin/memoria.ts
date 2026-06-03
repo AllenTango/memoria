@@ -7,9 +7,13 @@ import * as fs from 'fs';
 import { checkNodeVersion } from '../lib/check-node.js';
 
 async function main() {
-  // CLI 執行時 argv[1] 是 cli.js 的路徑
+  // CLI 執行時 argv[1] 是 cli.js 的路徑（可能指向 symlink）
+  // bin/memoria → lib/node_modules/memoria/dist/cli.js
+  // 因此需要 bin/../lib/node_modules/memoria → 实际包根目录
   const SELF_PATH = process.argv[1] ? path.resolve(process.argv[1]) : null;
-  const PKG_ROOT = SELF_PATH ? path.resolve(path.dirname(SELF_PATH), '..') : null;
+  const PKG_ROOT = SELF_PATH
+    ? path.resolve(path.dirname(path.dirname(SELF_PATH)), 'lib', 'node_modules', 'memoria')
+    : null;
 
   // 工具函数
   function isSiteDir(dir: string): boolean {

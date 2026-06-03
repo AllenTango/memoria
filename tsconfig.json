@@ -3,7 +3,8 @@
     "target": "ES2020",
     "module": "ESNext",
     "lib": [
-      "ES2020"
+      "ES2020",
+      "DOM"
     ],
     "types": [
       "node"
@@ -13,26 +14,29 @@
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "declaration": false,
     "sourceMap": false,
     "allowSyntheticDefaultImports": true,
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx"
   },
   "include": [
     "bin/**/*",
     "lib/**/*",
-    "src/**/*"
+    "core/**/*",
+    "tui/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "themes",
+    "template",
     "assets",
     "docs",
-    "scripts",
     "tests",
-    "src/tui/**/*"
+    "sdfsdf",
+    "uiopiop",
+    "desktop"
   ]
 }

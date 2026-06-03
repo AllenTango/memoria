@@ -20,7 +20,7 @@ interface Props {
 const ALL_COMMANDS: CommandItem[] = [
   { cmd: '/create',     desc: '新建站点',        color: C.green },
   { cmd: '/open',       desc: '打开项目',         color: C.cyan },
-  { cmd: '/generate',   desc: '构建站点',         color: C.orange },
+  { cmd: '/generate',   desc: '构建站点 (/b)',    color: C.orange },
   { cmd: '/bundle',     desc: '构建 + 打包',      color: C.yellow },
   { cmd: '/server',     desc: '本地预览',         color: C.purple },
   { cmd: '/deploy',     desc: '部署站点',         color: C.green },

@@ -170,7 +170,9 @@ export async function startPreview(opts: BuildOptions): Promise<never> {
   });
 
   process.stdin.resume();
-  await new Promise(() => {});
+  return new Promise(() => {
+    // 服务器运行中，永不返回
+  });
 }
 
 export function bundleSite(opts: BuildOptions): BuildResult {

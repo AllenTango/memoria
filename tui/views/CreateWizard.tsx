@@ -1,11 +1,15 @@
 /**
  * CreateWizard — 4-step site creation wizard (modern FlexBox)
+ * 日志遵循"逻辑与界面分离"原则：initSiteNonInteractive 通过 onLog 回调传递日志，
+ * CreateWizard 内部维护 logs 状态，日志渲染在向导自身的 LogView 内，不跑到 stdout。
  */
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import * as path from 'path';
 import { C } from '../contexts/TUIContext';
 import { Spinner } from '../components/Spinner';
 import { BlinkingCursor } from '../components/BlinkingCursor';
+import { LogView, LogEntry } from '../components/DetailPanel';
 import { initSiteNonInteractive } from '../../lib/init';
 import { addRecentProject } from '../../lib/recent';
 import { applyTheme } from '../../lib/apply-theme';
@@ -27,13 +31,13 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
   const [themeIdx, setThemeIdx] = useState(0);
   const [error, setError] = useState('');
   const [result, setResult] = useState<{ name: string; path: string } | null>(null);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
 
   useInput((input, key) => {
     if (step === 0) {
       if (key.return) {
         if (!name.trim()) { setError('名称不能为空'); return; }
-        const pathModule = require('path') as typeof import('path');
-        const computed = targetPath || pathModule.resolve(process.cwd(), name.trim());
+        const computed = targetPath || path.resolve(process.cwd(), name.trim());
         setTargetPath(computed);
         setStep(1);
       } else if (key.backspace) {
@@ -47,8 +51,7 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
       }
     } else if (step === 1) {
       if (key.return) {
-        const pathModule = require('path') as typeof import('path');
-        const resolved = targetPath.trim() || pathModule.resolve(process.cwd(), name);
+        const resolved = targetPath.trim() || path.resolve(process.cwd(), name);
         if (!isEmptyDir(resolved)) {
           setError('目录非空，请使用空目录或更换路径');
           return;
@@ -83,8 +86,19 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
 
   async function doCreate(): Promise<void> {
     const theme = THEMES[themeIdx].name;
+    const addLog = (level: LogEntry['level'], message: string) => {
+      setLogs(prev => [...prev, { timestamp: Date.now(), level, message }]);
+    };
     try {
-      await initSiteNonInteractive(targetPath, name, 'Your Name', '', '', true, true, theme);
+      const res = await initSiteNonInteractive(
+        targetPath, name, 'Your Name', '', '', true, true, theme,
+        (level, message) => addLog(level, message)
+      );
+      if (!res.success) {
+        setError(res.error || '创建失败');
+        setStep(0);
+        return;
+      }
       applyTheme(targetPath, theme);
       addRecentProject(targetPath);
       setResult({ name, path: targetPath });
@@ -102,10 +116,7 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
           <Text bold color={C.green}>🆕 新建站点</Text>
           {step > 0 && (
             <Text dimColor>
-              {targetPath || (() => {
-                const pathModule = require('path') as typeof import('path');
-                return pathModule.resolve(process.cwd(), name);
-              })()}
+              {targetPath || path.resolve(process.cwd(), name)}
             </Text>
           )}
         </Box>
@@ -131,10 +142,7 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
                 <Text color={C.cyan} wrap="truncate">{targetPath || '<输入中>'}</Text>
                 <BlinkingCursor />
               </Box>
-              <Text dimColor>默认: {(() => {
-                const pathModule = require('path') as typeof import('path');
-                return pathModule.resolve(process.cwd(), name);
-              })()}</Text>
+              <Text dimColor>默认: {path.resolve(process.cwd(), name)}</Text>
               {error && <Text color={C.red}>✗ {error}</Text>}
             </>
           )}
@@ -156,9 +164,16 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
           )}
 
           {step === 3 && (
-            <Box flexDirection="row" gap={1}>
-              <Spinner label="正在创建站点..." />
-              <Text dimColor>这可能需要几分钟...</Text>
+            <Box flexDirection="column" gap={1}>
+              <Box flexDirection="row" gap={1}>
+                <Spinner label="正在创建站点..." />
+                <Text dimColor>这可能需要几分钟...</Text>
+              </Box>
+              {logs.length > 0 && (
+                <Box flexDirection="column" flexGrow={1} overflow="hidden">
+                  <LogView logs={logs} />
+                </Box>
+              )}
             </Box>
           )}
 

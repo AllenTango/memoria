@@ -1,17 +1,28 @@
 /**
- * App — TUI top-level state machine
- * 顶层状态机：状态管理 + 路由 + 事件分发
- * 所有业务逻辑委托给 lib/ 层
+ * App — TUI 顶层状态机
+ * Layout: Header + Sidebar(30%) + Detail(70%) + StatusBar
+ * 状态：Selector(站点选择) ↔ Dashboard(站点管理)
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { render, Box, Text, useInput, useWindowSize, useApp } from 'ink';
+import * as fs from 'fs';
+import * as path from 'path';
+import matter from 'gray-matter';
 
 import { C } from './contexts/TUIContext';
+import { Layout } from './components/Layout';
+import { StatusBar } from './components/StatusBar';
+import { FileTree } from './components/FileTree';
+import { DetailPanel, type LogEntry } from './components/DetailPanel';
 import { ConfirmBox } from './components/ConfirmBox';
 import { SelectableList } from './components/SelectableList';
+import { Spinner } from './components/Spinner';
+import { BlinkingCursor } from './components/BlinkingCursor';
 
 import { getRecentProjects, addRecentProject, isMemoriaProject, getProjectName } from '../lib/recent';
-import { buildSite, bundleSite, startPreview } from '../lib/build';
+import { buildSite, bundleSite } from '../lib/build';
+import { startServer, stopServer, isServerRunning } from '../lib/server-manager';
+import { openInEditor } from '../lib/editor';
 import { CreateWizard } from './views/CreateWizard';
 import { NewContentWizard } from './views/NewContentWizard';
 import { ThemePicker } from './views/ThemePicker';
@@ -19,109 +30,264 @@ import { RecentList } from './views/RecentList';
 import { PathInput } from './views/PathInput';
 import { CommandPalette } from './views/CommandPalette';
 
-type Screen = 'main' | 'create' | 'open' | 'browse' | 'newContent' | 'theme';
+// ── 类型 ──────────────────────────────────────────────
 
-interface MenuItem {
-  label: string;
-  color: string;
-  cmd: string | null; // null = navigation/非命令项
+type Screen = 'main' | 'create' | 'open' | 'browse' | 'newContent' | 'theme';
+type DetailMode = 'metadata' | 'log';
+
+interface FileMetadata {
+  type: 'directory' | 'blog' | 'vlog' | 'photo';
+  name: string;
+  path: string;
+  date?: string;
+  tags?: string[];
+  description?: string;
+  childCount?: number;
 }
+
+// ── App 主组件 ────────────────────────────────────────
 
 function App(): React.ReactElement {
   const { exit } = useApp();
-  const { columns } = useWindowSize();
+  const { columns, rows } = useWindowSize();
   const W = Math.max(80, columns);
 
+  // ── 状态 ──────────────────────────────────────────
+
   const [screen, setScreen] = useState<Screen>('main');
-  const [selected, setSelected] = useState(0);
   const [currentProject, setCurrentProject] = useState<string | null>(null);
   const [showPalette, setShowPalette] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ cmd: string; label: string } | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'ok' | 'err' | 'warn' | 'info'; msg: string } | null>(null);
 
+  // FileTree 状态
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  const [fileMetadata, setFileMetadata] = useState<FileMetadata | null>(null);
+
+  // Menu 状态（站点选择器）
+  const [menuSelected, setMenuSelected] = useState(0);
+  const menuItems = [
+    { label: '新建站点', color: C.green },
+    { label: '打开项目', color: C.cyan },
+  ];
+
+  // DetailPanel 状态
+  const [detailMode, setDetailMode] = useState<DetailMode>('metadata');
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [activeCommand, setActiveCommand] = useState<string | null>(null);
+
+  // Server 状态
+  const [serverRunning, setServerRunning] = useState(false);
+
   const recents = getRecentProjects().slice(0, 5);
 
-  // 自动检测当前目录
-  useEffect(() => {
-    const cwd = process.cwd();
-    if (isMemoriaProject(cwd)) {
-      openProject(cwd);
+  // ── 文件元数据加载 ──────────────────────────────────
+
+  const loadFileMetadata = useCallback((filePath: string | null) => {
+    if (!filePath) {
+      setFileMetadata(null);
+      return;
+    }
+
+    try {
+      const stats = fs.statSync(filePath);
+
+      if (stats.isDirectory()) {
+        const entries = fs.readdirSync(filePath, { withFileTypes: true });
+        const childCount = entries.filter(e => !e.name.startsWith('.')).length;
+        setFileMetadata({
+          type: 'directory',
+          name: path.basename(filePath),
+          path: filePath,
+          childCount,
+        });
+      } else if (filePath.endsWith('.md')) {
+        const raw = fs.readFileSync(filePath, 'utf-8');
+        const { data: fm } = matter(raw);
+        const typeMap: Record<string, 'blog' | 'vlog' | 'photo'> = {
+          blog: 'blog', vlog: 'vlog', photo: 'photo',
+        };
+        const type = typeMap[fm.type] || 'blog';
+        setFileMetadata({
+          type,
+          name: fm.title || path.basename(filePath, '.md'),
+          path: filePath,
+          date: fm.date ? String(fm.date).slice(0, 10) : undefined,
+          tags: Array.isArray(fm.tags) ? fm.tags : [],
+          description: fm.description || undefined,
+        });
+      }
+    } catch {
+      setFileMetadata(null);
     }
   }, []);
 
-  // 键盘输入分发
+  // ── 日志操作 ────────────────────────────────────────
+
+  const appendLog = useCallback((level: LogEntry['level'], message: string) => {
+    setLogs(prev => [...prev, { timestamp: Date.now(), level, message }]);
+  }, []);
+
+  const clearLogs = useCallback(() => {
+    setLogs([]);
+    setActiveCommand(null);
+  }, []);
+
+  const showLogsForCommand = useCallback((cmdName: string, executor: () => Promise<void>) => {
+    return (): Promise<void> => {
+      return new Promise(async (resolve) => {
+        setDetailMode('log');
+        setActiveCommand(cmdName);
+        setLogs([]);
+        appendLog('info', `开始执行: ${cmdName}`);
+
+        try {
+          await executor();
+          appendLog('success', `${cmdName} 完成`);
+          setTimeout(() => {
+            setDetailMode('metadata');
+            setActiveCommand(null);
+          }, 1500);
+          resolve();
+        } catch (err) {
+          appendLog('error', err instanceof Error ? err.message : String(err));
+          setTimeout(() => {
+            setDetailMode('metadata');
+            setActiveCommand(null);
+          }, 2000);
+          resolve();
+        }
+      });
+    };
+  }, [appendLog]);
+
+  // ── 键盘输入 ───────────────────────────────────────
+
   useInput((input, key) => {
+    // 命令面板开启时忽略其他输入
     if (showPalette || confirmTarget) return;
+
+    // 全局快捷键
     if (key.ctrl && input === 'c') { doExit(); return; }
 
-    if (screen === 'main') {
+    if (screen === 'main' && currentProject) {
+      // Dashboard 快捷键
+      if (input === 'p' || input === 'P') {
+        void handleStartServer();
+        return;
+      }
+      if (input === 's' || input === 'S') {
+        void handleStopServer();
+        return;
+      }
       if (input === '/') { setShowPalette(true); return; }
-      if (key.upArrow) setSelected(s => Math.max(0, s - 1));
-      else if (key.downArrow) setSelected(s => Math.min(maxMenuItems() - 1, s + 1));
-      else if (key.return) handleMainSelect();
-      else if (input === 'x' || input === 'X') doExit();
+      if (input === 'x' || input === 'X') {
+        // 关闭项目，返回站点选择
+        setCurrentProject(null);
+        setSelectedFilePath(null);
+        setFileMetadata(null);
+        setScreen('main');
+        return;
+      }
+    }
+
+    if (screen === 'main' && !currentProject) {
+      if (input === 'c' || input === 'C') { setScreen('create'); return; }
+      if (input === 'o' || input === 'O') { setScreen('open'); return; }
+      if (input === 'x' || input === 'X') { doExit(); return; }
     }
   });
 
-  // ── helpers ────────────────────────────────────────────────────────────
-
-  function maxMenuItems(): number {
-    return currentProject ? 7 : 2;
-  }
+  // ── 项目操作 ────────────────────────────────────────
 
   function openProject(root: string): void {
     addRecentProject(root);
     setCurrentProject(root);
     setScreen('main');
     setFeedback({ type: 'ok', msg: `✓ 已打开: ${getProjectName(root)}` });
+    clearLogs();
+    setDetailMode('metadata');
+    setSelectedFilePath(null);
+    setFileMetadata(null);
   }
 
-  // ── menu handlers ───────────────────────────────────────────────────────
-
-  function handleMainSelect(): void {
-    if (!currentProject) {
-      if (selected === 0) setScreen('create');
-      else if (selected === 1) setScreen('open');
-      else doExit();
-    } else {
-      const cmds = ['generate', 'bundle', 'server', 'new', 'theme', 'deploy', 'exit'] as const;
-      const cmd = cmds[selected];
-      if (cmd === 'exit') doExit();
-      else if (cmd === 'new') { setScreen('newContent'); }
-      else if (cmd === 'theme') { setScreen('theme'); }
-      else { setConfirmTarget({ cmd, label: cmd }); }
+  async function handleStartServer(): Promise<void> {
+    if (!currentProject) return;
+    if (isServerRunning()) {
+      setFeedback({ type: 'warn', msg: '⚠ 服务器已在运行' });
+      return;
     }
+
+    setDetailMode('log');
+    setActiveCommand('/server');
+    setLogs([]);
+    appendLog('info', '正在构建站点...');
+
+    try {
+      await startServer(currentProject);
+      setServerRunning(true);
+      appendLog('success', '🌐 预览服务器已启动 http://localhost:3000');
+      setFeedback({ type: 'ok', msg: '✓ 服务器已启动' });
+    } catch (err) {
+      appendLog('error', err instanceof Error ? err.message : String(err));
+      setFeedback({ type: 'err', msg: '✗ 启动失败' });
+    }
+    setTimeout(() => setDetailMode('metadata'), 2000);
+  }
+
+  async function handleStopServer(): Promise<void> {
+    if (!isServerRunning()) {
+      setFeedback({ type: 'warn', msg: '⚠ 服务器未运行' });
+      return;
+    }
+
+    setDetailMode('log');
+    setActiveCommand('/stop');
+    setLogs([]);
+    appendLog('info', '正在停止服务器...');
+
+    await stopServer();
+    setServerRunning(false);
+    appendLog('success', '✓ 服务器已停止');
+    setFeedback({ type: 'ok', msg: '✓ 服务器已停止' });
+    setTimeout(() => setDetailMode('metadata'), 1500);
   }
 
   async function executeCmd(cmd: string): Promise<void> {
     if (!currentProject) return;
     setConfirmTarget(null);
-    setFeedback({ type: 'info', msg: `▶ 执行: memoria ${cmd}` });
 
-    try {
-      if (cmd === 'generate') {
+    const tasks: Record<string, () => Promise<void>> = {
+      generate: showLogsForCommand('/generate', async () => {
+        appendLog('info', '开始构建站点...');
         const result = buildSite({ rootDir: currentProject });
         if (result.success) {
-          setFeedback({ type: 'ok', msg: `✓ 构建完成 (${result.stats.blogs} blogs, ${result.stats.vlogs} vlogs, ${result.stats.photos} photos)` });
+          appendLog('success', `✓ 构建完成 (${result.stats?.blogs} blogs, ${result.stats?.vlogs} vlogs, ${result.stats?.photos} photos)`);
+          setFeedback({ type: 'ok', msg: `✓ 构建完成` });
         } else {
-          setFeedback({ type: 'err', msg: `✗ 构建失败: ${result.errors.join(', ')}` });
+          result.errors.forEach(e => appendLog('error', e));
+          setFeedback({ type: 'err', msg: `✗ 构建失败` });
         }
-      } else if (cmd === 'bundle') {
+      }),
+      bundle: showLogsForCommand('/bundle', async () => {
+        appendLog('info', '开始打包站点...');
         const result = bundleSite({ rootDir: currentProject });
         if (result.success) {
-          setFeedback({ type: 'ok', msg: `✓ 打包完成` });
+          appendLog('success', '✓ 打包完成');
+          setFeedback({ type: 'ok', msg: '✓ 打包完成' });
         } else {
-          setFeedback({ type: 'err', msg: `✗ 打包失败: ${result.errors.join(', ')}` });
+          result.errors.forEach(e => appendLog('error', e));
+          setFeedback({ type: 'err', msg: '✗ 打包失败' });
         }
-      } else if (cmd === 'server') {
-        setFeedback({ type: 'info', msg: '🌐 启动预览服务器...' });
-        await startPreview({ rootDir: currentProject });
-      } else if (cmd === 'deploy') {
+      }),
+      server: async () => { await handleStartServer(); },
+      deploy: async () => {
         setFeedback({ type: 'warn', msg: '⚠ deploy 功能开发中' });
-      }
-    } catch (err) {
-      setFeedback({ type: 'err', msg: `✗ 执行失败: ${err instanceof Error ? err.message : String(err)}` });
-    }
+      },
+    };
+
+    const task = tasks[cmd];
+    if (task) await task();
   }
 
   function handleCommand(input: string): void {
@@ -132,180 +298,214 @@ function App(): React.ReactElement {
     if (c === '/exit' || c === '/quit') { doExit(); return; }
 
     const bare = c.replace(/^\/+/, '');
-    if (['generate', 'bundle', 'server', 'deploy'].includes(bare)) {
+    if (['generate', 'b', 'bundle', 'server', 'deploy'].includes(bare)) {
       if (!currentProject) {
         setFeedback({ type: 'warn', msg: '⚠ 请先打开一个项目' });
         return;
       }
-      void executeCmd(bare);
+      // b is alias for generate
+      void executeCmd(bare === 'b' ? 'generate' : bare);
+    } else if (bare === 'theme') {
+      if (!currentProject) {
+        setFeedback({ type: 'warn', msg: '⚠ 请先打开一个项目' });
+        return;
+      }
+      setScreen('theme');
     } else {
       setFeedback({ type: 'err', msg: `✗ 未知命令: ${c}` });
     }
   }
 
+  // ── 文件树回调 ────────────────────────────────────
+
+  const handleFileSelect = useCallback(async (filePath: string) => {
+    if (!currentProject) return;
+    setSelectedFilePath(filePath);
+    loadFileMetadata(filePath);
+    setDetailMode('metadata');
+
+    // 唤起编辑器
+    try {
+      await openInEditor(filePath);
+      appendLog('info', `✓ 已保存: ${path.basename(filePath)}`);
+      // 刷新元数据（可能用户修改了标题/日期等）
+      loadFileMetadata(filePath);
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('文件不存在')) {
+        appendLog('error', `✗ 文件不存在: ${filePath}`);
+      } else if (err instanceof Error && err.message.includes('无法启动编辑器')) {
+        appendLog('error', `✗ ${err.message}`);
+        setFeedback({ type: 'err', msg: `✗ 无法启动编辑器` });
+      }
+    }
+  }, [currentProject, loadFileMetadata, appendLog]);
+
+  // ── 退出 ──────────────────────────────────────────
+
   function doExit(): void {
+    if (isServerRunning()) {
+      stopServer().catch(() => {});
+    }
     setFeedback({ type: 'info', msg: '再见！👋' });
     setTimeout(() => exit(), 100);
   }
 
-  // ── screen routing ─────────────────────────────────────────────────────
+  // ── SiteSelector 视图 ─────────────────────────────
 
-  if (screen === 'create') {
+  if (!currentProject && screen !== 'main') {
+    if (screen === 'open') {
+      return (
+        <Box flexDirection="column" width={W} minWidth={80}>
+          <RecentList
+            recents={recents}
+            onSelect={root => openProject(root)}
+            onBack={() => setScreen('main')}
+            onBrowse={() => setScreen('browse')}
+          />
+        </Box>
+      );
+    }
+
+    if (screen === 'browse') {
+      return (
+        <Box flexDirection="column" width={W} minWidth={80}>
+          <PathInput
+            onSubmit={(dir) => {
+              if (isMemoriaProject(dir)) openProject(dir);
+              else {
+                setFeedback({ type: 'err', msg: '✗ 目录不存在或不是项目' });
+                setScreen('open');
+              }
+            }}
+            onCancel={() => setScreen('open')}
+          />
+        </Box>
+      );
+    }
+  }
+
+  // ── SiteSelector 视图（未打开项目）───────────────
+
+  if (!currentProject && screen === 'main') {
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
     return (
-      <Box flexDirection="column" width={W} minWidth={80}>
-        <CreateWizard onComplete={(p) => { if (p) openProject(p); setScreen('main'); }} />
-      </Box>
+      <Layout siteName={undefined} sitePath={undefined} serverRunning={serverRunning}>
+        <>
+          {/* Left Sidebar — 菜单列表 */}
+          <Box flexDirection="column" flexGrow={1}>
+            <SelectableList
+              items={menuItems}
+              selected={menuSelected}
+              onSelect={setMenuSelected}
+              onConfirm={(i) => {
+                if (i === 0) setScreen('create');
+                else setScreen('open');
+              }}
+            />
+          </Box>
+        </>
+
+        <>
+          {/* Right Detail — 最近项目 + 快捷键提示 */}
+          <Box flexDirection="column" flexGrow={1} gap={1}>
+            {recents.length > 0 && (
+              <Box flexDirection="column">
+                <Text dimColor bold>最近项目</Text>
+                <Box flexDirection="column" marginTop={0} gap={0}>
+                  {recents.slice(0, 5).map((r) => (
+                    <Text
+                      key={r.root}
+                      color={C.cyan}
+                      wrap="truncate"
+                      onClick={() => openProject(r.root)}
+                    >
+                      📂 {r.name}
+                    </Text>
+                  ))}
+                </Box>
+              </Box>
+            )}
+            <Box flexDirection="column" marginTop={1}>
+              <Text dimColor>↑↓ 选择 · Enter 确认 · Esc 退出</Text>
+            </Box>
+          </Box>
+        </>
+      </Layout>
     );
   }
 
-  if (screen === 'open') {
+  // ── Create Wizard 视图（统一 Layout）─────────────
+  if (!currentProject && screen === 'create') {
     return (
-      <Box flexDirection="column" width={W} minWidth={80}>
-        <RecentList
-          recents={recents}
-          onSelect={root => openProject(root)}
-          onBack={() => setScreen('main')}
-          onBrowse={() => setScreen('browse')}
+      <Layout siteName="新建站点" sitePath={undefined} serverRunning={serverRunning}>
+        <>
+          {/* Left Sidebar — 创建引导 */}
+          <Box flexDirection="column" gap={1}>
+            <Text bold color={C.green}>🆕 新建站点</Text>
+            <Text dimColor>填写名称和路径即可创建新站点</Text>
+            <Box flexDirection="column" marginTop={1} gap={0}>
+              <Text color={C.muted}>① 输入名称</Text>
+              <Text color={C.muted}>② 确认路径</Text>
+              <Text color={C.muted}>③ 选择主题</Text>
+              <Text color={C.muted}>④ 创建完成</Text>
+            </Box>
+            <Text dimColor marginTop={2}>Esc 返回</Text>
+          </Box>
+        </>
+
+        <>
+          {/* Right Detail — 创建向导 */}
+          <CreateWizard onComplete={(p) => { if (p) openProject(p); setScreen('main'); }} />
+        </>
+      </Layout>
+    );
+  }
+
+  // ── Command Palette Overlay ───────────────────────
+  if (showPalette) {
+    return (
+      <Box position="absolute" top={0} left={0} right={0} bottom={0}>
+        <CommandPalette
+          onCommand={(cmd) => { setShowPalette(false); handleCommand(cmd); }}
+          onClose={() => setShowPalette(false)}
         />
       </Box>
     );
   }
 
-  if (screen === 'browse') {
-    return (
-      <Box flexDirection="column" width={W} minWidth={80}>
-        <PathInput
-          onSubmit={(dir) => {
-            if (isMemoriaProject(dir)) openProject(dir);
-            else if (process.env.DEV) {
-              setFeedback({ type: 'warn', msg: '⚠ 该目录不是 Memoria 项目' });
-              setScreen('open');
-            } else {
-              setFeedback({ type: 'err', msg: '✗ 目录不存在或不是项目' });
-              setScreen('open');
-            }
-          }}
-          onCancel={() => setScreen('open')}
-        />
-      </Box>
-    );
-  }
-
-  if (screen === 'theme') {
-    return (
-      <Box flexDirection="column" width={W} minWidth={80}>
-        <ThemePicker projectRoot={currentProject!} onClose={() => setScreen('main')} />
-      </Box>
-    );
-  }
-
-  if (screen === 'newContent') {
-    return (
-      <Box flexDirection="column" width={W} minWidth={80}>
-        <NewContentWizard projectRoot={currentProject!} onComplete={() => setScreen('main')} />
-      </Box>
-    );
-  }
-
-  // ── main screen ─────────────────────────────────────────────────────────
-
-  const menuItems: MenuItem[] = currentProject
-    ? [
-        { label: '🔨  generate   构建站点',    color: C.green, cmd: 'generate' },
-        { label: '📦  bundle     构建+打包',   color: C.orange, cmd: 'bundle' },
-        { label: '🌐  server     本地预览',    color: C.purple, cmd: 'server' },
-        { label: '📝  new        新建内容',    color: C.cyan, cmd: null },
-        { label: '🎨  theme      切换主题',    color: C.pink, cmd: null },
-        { label: '🚀  deploy     部署站点',    color: C.green, cmd: 'deploy' },
-        { label: 'x   exit       退出项目',    color: C.muted, cmd: null },
-      ]
-    : [
-        { label: '➕  create     新建站点',    color: C.green, cmd: null },
-        { label: '📂  open       打开项目',    color: C.cyan, cmd: null },
-        { label: 'x   exit       退出',        color: C.muted, cmd: null },
-      ];
+  // ── SiteDashboard 视图（已打开项目）───────────────
 
   return (
-    <Box flexDirection="column" width={W} minWidth={80}>
-      {/* Title bar */}
-      <Box borderStyle="round" borderColor={C.purple} paddingX={1} flexDirection="column">
-        <Box flexDirection="row" justifyContent="space-between">
-          <Text bold color={C.purple}>📚 Memoria</Text>
-          <Text dimColor>{currentProject ? `📂 ${getProjectName(currentProject)}` : 'TUI'}</Text>
-        </Box>
-      </Box>
+    <Layout
+      siteName={currentProject ? getProjectName(currentProject) : undefined}
+      sitePath={currentProject}
+      serverRunning={serverRunning}
+    >
+      <>
+        {/* Left Sidebar — FileTree */}
+        <FileTree
+          rootDir={currentProject || ''}
+          selectedPath={selectedFilePath}
+          onSelectFile={handleFileSelect}
+        />
+      </>
 
-      {/* Menu panel */}
-      <Box flexGrow={1} flexDirection="column" marginTop={1}>
-        <Box borderStyle="round" borderColor={C.cyan} flexDirection="column" flexGrow={1} paddingX={1}>
-          <Text color={C.muted} bold>● 主菜单</Text>
-          <Box flexDirection="column" marginTop={1} gap={0}>
-            {menuItems.map((item, i) => (
-              <Box key={i} flexDirection="row">
-                <Text
-                  color={i === selected ? item.color : C.muted}
-                  bold={i === selected}
-                  wrap="truncate"
-                >
-                  {i === selected ? '▶ ' : '  '}{item.label}
-                </Text>
-              </Box>
-            ))}
-          </Box>
-        </Box>
-      </Box>
-
-      {/* Feedback */}
-      {feedback && (
-        <Box marginTop={1} borderStyle="round" borderColor={feedback.type === 'err' ? C.red : feedback.type === 'warn' ? C.yellow : feedback.type === 'ok' ? C.green : C.muted} paddingX={1}>
-          <Text color={feedback.type === 'err' ? C.red : feedback.type === 'warn' ? C.yellow : feedback.type === 'ok' ? C.green : C.muted}>
-            {feedback.msg}
-          </Text>
-        </Box>
-      )}
-
-      {/* Recent projects */}
-      {!currentProject && recents.length > 0 && (
-        <Box marginTop={1} borderStyle="round" borderColor={C.muted} paddingX={1} flexDirection="column">
-          <Text dimColor bold>● 最近项目</Text>
-          <Box flexDirection="column" marginTop={1} gap={0}>
-            {recents.slice(0, 3).map(r => (
-              <Text key={r.root} color={C.cyan} wrap="truncate">  {r.name}</Text>
-            ))}
-          </Box>
-        </Box>
-      )}
-
-      {/* Status bar */}
-      <Box marginTop={1} borderStyle="round" borderColor={C.muted} paddingX={1}>
-        <Text dimColor>
-          按 <Text color={C.yellow} bold>/</Text> 打开命令面板 · <Text dimColor>↑↓</Text> 导航 · <Text dimColor>Enter</Text> 确认 · <Text dimColor>x</Text> 退出
-        </Text>
-      </Box>
-
-      {/* Command palette */}
-      {showPalette && (
-        <Box position="absolute" top={0} left={0} right={0} bottom={0}>
-          <CommandPalette
-            onCommand={(cmd) => { setShowPalette(false); handleCommand(cmd); }}
-            onClose={() => setShowPalette(false)}
-          />
-        </Box>
-      )}
-
-      {/* Confirm dialog */}
-      {confirmTarget && (
-        <Box position="absolute" top={0} left={0} right={0} bottom={0}>
-          <ConfirmBox
-            message={`执行 /${confirmTarget.label}？`}
-            onConfirm={() => void executeCmd(confirmTarget.cmd)}
-            onCancel={() => setConfirmTarget(null)}
-          />
-        </Box>
-      )}
-    </Box>
+      <>
+        {/* Right Detail/Log */}
+        <DetailPanel
+          mode={detailMode}
+          metadata={fileMetadata || undefined}
+          logs={logs}
+          activeCommand={activeCommand || undefined}
+        />
+      </>
+    </Layout>
   );
 }
+
+// ── 暴露给 CLI 入口 ─────────────────────────────────
 
 export async function showApp(cwd?: string): Promise<void> {
   return new Promise((resolve) => {

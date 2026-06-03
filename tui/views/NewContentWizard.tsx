@@ -3,6 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import * as path from 'path';
 import { C } from '../contexts/TUIContext';
 import { Spinner } from '../components/Spinner';
 import { BlinkingCursor } from '../components/BlinkingCursor';
@@ -73,7 +74,7 @@ export function NewContentWizard({ projectRoot, onComplete }: Props): React.Reac
       <Box borderStyle="round" borderColor={C.cyan} paddingX={1} flexDirection="column">
         <Box flexDirection="row" justifyContent="space-between">
           <Text bold color={C.cyan}>📝 新建内容</Text>
-          <Text dimColor>{require('path').basename(projectRoot)}</Text>
+          <Text dimColor>{path.basename(projectRoot)}</Text>
         </Box>
 
         <Box flexDirection="column" marginTop={1} gap={1}>

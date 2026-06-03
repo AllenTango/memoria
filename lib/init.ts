@@ -230,6 +230,7 @@ function showGuide(targetDir: string, siteName: string, hasSamples: boolean, has
 /**
  * 非交互式初始化（供 TUI 调用）
  * 不使用 ask/confirm/readline，避免在 ink stdin 下挂起
+ * @param onLog 可选回调，将日志级别和消息传递给调用者（TUI）
  */
 export async function initSiteNonInteractive(
   targetDir: string,
@@ -239,8 +240,15 @@ export async function initSiteNonInteractive(
   siteIcon: string = '',
   initGit: boolean = true,
   installSamples: boolean = true,
-  theme: string = 'dracula'
-): Promise<void> {
+  theme: string = 'dracula',
+  onLog?: (level: 'info' | 'warn' | 'error' | 'success', message: string) => void
+): Promise<{ success: boolean; error?: string }> {
+  const log = (level: 'info' | 'warn' | 'error' | 'success', message: string) => {
+    if (onLog) {
+      onLog(level, message);
+    }
+  };
+
   // Use import.meta.url to find the actual workspace root
   // Walk up from current file until we find package.json with memoria property
   const __filename = fileURLToPath(import.meta.url);
@@ -262,18 +270,23 @@ export async function initSiteNonInteractive(
     currentDir = parent;
   }
   if (!PKG_ROOT) {
-    console.error('Error: cannot locate memoria workspace root');
-    process.exit(1);
+    log('error', '无法定位 memoria 工作区根目录');
+    return { success: false, error: 'cannot locate memoria workspace root' };
   }
   const TEMPLATE_DIR = path.join(PKG_ROOT, 'template');
   const THEMES_DIR = path.join(PKG_ROOT, 'themes');
 
-  console.log('\n📦 正在初始化 Memoria 站点...\n');
+  log('info', '📦 正在初始化 Memoria 站点...');
   if (!fs.existsSync(TEMPLATE_DIR)) {
-    console.error('Error: site-template not found at:', TEMPLATE_DIR);
-    process.exit(1);
+    log('error', `错误: site-template 未找到: ${TEMPLATE_DIR}`);
+    return { success: false, error: 'site-template not found' };
   }
-  execSync(`cp -r "${TEMPLATE_DIR}/." "${targetDir}"`, { stdio: 'pipe' });
+  try {
+    execSync(`cp -r "${TEMPLATE_DIR}/." "${targetDir}"`, { stdio: 'pipe' });
+  } catch (e: any) {
+    log('error', `复制模板失败: ${e.message}`);
+    return { success: false, error: e.message };
+  }
 
   // 写 package.json
   const pkgPath = path.join(targetDir, 'package.json');
@@ -296,34 +309,42 @@ theme: ${theme}
   // 复制内置主题
   const siteThemesDir = path.join(targetDir, 'themes');
   if (fs.existsSync(THEMES_DIR)) {
-    console.log('🎨 复制内置主题到站点...');
+    log('info', '🎨 复制内置主题到站点...');
     copyDir(THEMES_DIR, siteThemesDir);
-    console.log('  ✓ dracula, mint, nord, peach');
+    log('success', '  ✓ dracula, mint, nord, peach');
   }
 
   // 安装依赖
-  console.log('\n📦 安装依赖...');
-  execSync('npm install', { cwd: targetDir, stdio: 'pipe' });
+  log('info', '📦 安装依赖...');
+  try {
+    execSync('npm install', { cwd: targetDir, stdio: 'pipe' });
+  } catch (e: any) {
+    log('error', `npm install 失败: ${e.message}`);
+    return { success: false, error: e.message };
+  }
 
   // Git 初始化
   if (initGit) {
-    console.log('\n📚 初始化 Git 仓库...');
-    execSync('git init', { cwd: targetDir, stdio: 'pipe' });
-    execSync('git add .', { cwd: targetDir, stdio: 'pipe' });
-    execSync('git commit -m "Initial commit"', { cwd: targetDir, stdio: 'pipe' });
-    console.log('  ✓ Git 仓库已初始化');
+    log('info', '📚 初始化 Git 仓库...');
+    try {
+      execSync('git init', { cwd: targetDir, stdio: 'pipe' });
+      execSync('git add .', { cwd: targetDir, stdio: 'pipe' });
+      execSync('git commit -m "Initial commit"', { cwd: targetDir, stdio: 'pipe' });
+      log('success', '  ✓ Git 仓库已初始化');
+    } catch (e: any) {
+      log('warn', `Git 初始化跳过: ${e.message}`);
+    }
   }
 
   // 示例内容
   if (installSamples) {
-    console.log('\n📝 创建示例内容...');
+    log('info', '📝 创建示例内容...');
     createSampleContent(targetDir);
-    console.log('  ✓ 示例内容已创建');
+    log('success', '  ✓ 示例内容已创建');
   }
 
-  console.log(`\n  🚀 ${siteName} 快速开始指南\n`);
-  console.log(`  cd ${targetDir}`);
-  console.log('  memoria generate    # 构建站点\n');
+  log('success', `✓ ${siteName} 创建完成`);
+  return { success: true };
 }
 
 export { initSite };
