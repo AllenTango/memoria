@@ -265,7 +265,7 @@ export async function initSiteNonInteractive(
     console.error('Error: cannot locate memoria workspace root');
     process.exit(1);
   }
-  const TEMPLATE_DIR = path.join(PKG_ROOT, 'assets', 'site-template');
+  const TEMPLATE_DIR = path.join(PKG_ROOT, 'template');
   const THEMES_DIR = path.join(PKG_ROOT, 'themes');
 
   console.log('\n📦 正在初始化 Memoria 站点...\n');

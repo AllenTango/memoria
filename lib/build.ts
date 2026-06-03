@@ -1,0 +1,195 @@
+/**
+ * lib/build.ts
+ * 站点构建 — 副作用封装
+ * 调用 core 层执行编译和渲染
+ */
+import * as path from 'path';
+import * as fs from 'fs';
+import { execSync } from 'child_process';
+import { findPkgRoot } from './pkg-root.js';
+import { compileAllContent } from '../core/compiler.js';
+import { renderIndex, renderBlogs, renderVlogs, renderPhotos, renderAbout, renderDetail } from '../core/renderer.js';
+import { ensureDir, writeFile, slugify } from '../core/utils.js';
+
+export interface BuildOptions {
+  rootDir: string;
+  theme?: string;
+}
+
+export interface BuildResult {
+  success: boolean;
+  outputDir: string;
+  stats: {
+    blogs: number;
+    vlogs: number;
+    photos: number;
+  };
+  errors: string[];
+}
+
+/**
+ * 构建站点 — 返回结果对象（可测试）
+ */
+export function buildSite(opts: BuildOptions): BuildResult {
+  const { rootDir, theme: themeArg } = opts;
+  const errors: string[] = [];
+
+  // 解析主题
+  const themeName = themeArg ?? getSavedTheme(rootDir) ?? 'dracula';
+  const theme = resolveThemePath(themeName, rootDir);
+  if (!theme) {
+    return { success: false, outputDir: '', stats: { blogs: 0, vlogs: 0, photos: 0 }, errors: [`Theme not found: ${themeName}`] };
+  }
+
+  // 编译内容
+  const contentDir = path.join(rootDir, 'content');
+  if (!fs.existsSync(contentDir)) {
+    errors.push(`content/ not found in ${rootDir}`);
+    return { success: false, outputDir: '', stats: { blogs: 0, vlogs: 0, photos: 0 }, errors };
+  }
+
+  const { blogs, vlogs, photos, all } = compileAllContent(contentDir);
+
+  // 渲染
+  const outputDir = path.join(rootDir, 'dist');
+  ensureDir(outputDir);
+
+  const template = fs.readFileSync(path.join(theme.path, 'template.html'), 'utf-8');
+  const siteConfig = loadSiteConfig(rootDir);
+
+  copyThemeAssets(rootDir, theme.path, outputDir);
+
+  writeFile(path.join(outputDir, 'index.html'), renderIndex({ blogs, vlogs, photos, all, siteConfig }, template));
+  writeFile(path.join(outputDir, 'blogs.html'), renderBlogs({ blogs, siteConfig }, template));
+  writeFile(path.join(outputDir, 'vlogs.html'), renderVlogs({ vlogs, siteConfig }, template));
+  writeFile(path.join(outputDir, 'photos.html'), renderPhotos({ photos, siteConfig }, template));
+  writeFile(path.join(outputDir, 'about.html'), renderAbout({ siteConfig }, template));
+
+  ensureDir(path.join(outputDir, 'blog'));
+  ensureDir(path.join(outputDir, 'vlog'));
+  ensureDir(path.join(outputDir, 'photo'));
+
+  for (const { items } of [{ items: blogs }, { items: vlogs }, { items: photos }]) {
+    for (const item of items) {
+      const dir = item.type === 'blog' ? 'blog' : item.type === 'vlog' ? 'vlog' : 'photo';
+      const itemDir = path.join(outputDir, dir, slugify(item.title));
+      ensureDir(itemDir);
+      writeFile(path.join(itemDir, 'index.html'), renderDetail(item, items, template));
+    }
+  }
+
+  return {
+    success: true,
+    outputDir,
+    stats: { blogs: blogs.length, vlogs: vlogs.length, photos: photos.length },
+    errors: [],
+  };
+}
+
+/**
+ * 启动预览服务器（阻塞）
+ */
+export async function startPreview(opts: BuildOptions): Promise<never> {
+  const { rootDir } = opts;
+
+  // 先构建一次
+  const result = buildSite(opts);
+  if (!result.success) {
+    console.error('Build failed:', result.errors.join(', '));
+    process.exit(1);
+  }
+
+  const outputDir = result.outputDir;
+  const PORT = 3000;
+
+  const { createServer } = await import('http');
+  const mimeTypes: Record<string, string> = {
+    '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript',
+    '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg',
+    '.gif': 'image/gif', '.svg': 'image/svg+xml',
+  };
+
+  const server = createServer((req, res) => {
+    let filePath = path.join(outputDir, req.url === '/' ? 'index.html' : req.url!);
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+      filePath = path.join(outputDir, 'index.html');
+    }
+    const ext = path.extname(filePath);
+    res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'text/plain' });
+    fs.createReadStream(filePath).pipe(res);
+  });
+
+  server.listen(PORT, () => {
+    console.log(`Preview server running at http://localhost:${PORT}/`);
+    console.log('Press Ctrl+C to stop');
+  });
+
+  // 保持进程
+  process.stdin.resume();
+  await new Promise(() => {}); // never resolves
+}
+
+/**
+ * 打包站点
+ */
+export function bundleSite(opts: BuildOptions): BuildResult {
+  const result = buildSite(opts);
+  if (!result.success) return result;
+
+  const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  const zipName = `memoria-${date}.zip`;
+  const zipPath = path.join(opts.rootDir, zipName);
+
+  if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+  execSync(`cd "${result.outputDir}" && zip -r "${zipPath}" .`, { stdio: 'inherit' });
+  return result;
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────
+
+function getSavedTheme(rootDir: string): string | null {
+  const rc = path.join(rootDir, '.themerc');
+  return fs.existsSync(rc) ? fs.readFileSync(rc, 'utf-8').trim() : null;
+}
+
+function resolveThemePath(name: string, siteRoot: string): { type: 'built-in' | 'user' | 'external'; path: string } | null {
+  if (name.startsWith('/') || name.startsWith('~')) {
+    const p = path.resolve(name.replace(/^~/, process.env.HOME || ''));
+    return fs.existsSync(path.join(p, 'template.html')) ? { type: 'external', path: p } : null;
+  }
+  const userPath = path.join(siteRoot, 'themes', name);
+  if (fs.existsSync(path.join(userPath, 'template.html'))) return { type: 'user', path: userPath };
+  const builtin = path.join(findPkgRoot(), 'themes', name);
+  if (fs.existsSync(path.join(builtin, 'template.html'))) return { type: 'built-in', path: builtin };
+  return null;
+}
+
+function loadSiteConfig(rootDir: string): { name: string; icon: string } {
+  const configPath = path.join(rootDir, '_config.yml');
+  const defaults = { name: 'Memoria', icon: '/public/images/memoria-icon.png' };
+  if (!fs.existsSync(configPath)) return defaults;
+  const content = fs.readFileSync(configPath, 'utf-8');
+  const nameMatch = content.match(/^name:\s*"?([^"\n]+)"?/m);
+  const iconMatch = content.match(/^icon:\s*"?([^"\n]+)"?/m);
+  return {
+    name: nameMatch ? nameMatch[1] : defaults.name,
+    icon: iconMatch && iconMatch[1].trim() ? iconMatch[1].trim() : defaults.icon,
+  };
+}
+
+function copyThemeAssets(rootDir: string, themePath: string, outputDir: string): void {
+  const cssSrc = path.join(themePath, 'layout.css');
+  const cssDst = path.join(outputDir, 'layout.css');
+  if (fs.existsSync(cssSrc)) fs.copyFileSync(cssSrc, cssDst);
+
+  const varSrc = path.join(themePath, 'colors.css');
+  const varDst = path.join(outputDir, 'colors.css');
+  if (fs.existsSync(varSrc)) fs.copyFileSync(varSrc, varDst);
+
+  const publicSrc = path.join(rootDir, 'public');
+  const publicDst = path.join(outputDir, 'public');
+  if (fs.existsSync(publicSrc)) {
+    ensureDir(publicDst);
+    fs.cpSync(publicSrc, publicDst, { recursive: true });
+  }
+}

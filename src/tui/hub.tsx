@@ -15,7 +15,7 @@ import { Header, Footer, StatusBar } from './components/Frame';
 import { SelectableList } from './components/SelectableList';
 import { ConfirmBox } from './components/ConfirmBox';
 
-import { getRecentProjects, addRecentProject, isMemoriaProject, getProjectName } from './recent';
+import { getRecentProjects, addRecentProject, isMemoriaProject, getProjectName } from '../../lib/recent';
 import { CreateWizard } from './views/CreateWizard';
 import { NewContentWizard } from './views/NewContentWizard';
 import { ThemePicker } from './views/ThemePicker';

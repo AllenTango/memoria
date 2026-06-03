@@ -19,7 +19,7 @@ import {
   renderAbout,
   renderDetail,
 } from './renderer';
-import { addRecentProject, isMemoriaProject, getProjectName } from './tui/recent';
+import { addRecentProject, isMemoriaProject, getProjectName } from '../lib/recent';
 
 // ── ESM compat ───────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);

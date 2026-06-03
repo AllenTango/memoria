@@ -9,7 +9,7 @@ import { C } from '../contexts/TUIContext';
 import { Spinner } from '../components/Spinner';
 import { BlinkingCursor } from '../components/BlinkingCursor';
 import { initSiteNonInteractive } from '../../../lib/init';
-import { addRecentProject } from '../recent';
+import { addRecentProject } from '../../../lib/recent';
 
 const THEMES = [
   { label: 'Dracula', name: 'dracula', color: C.pink, emoji: '🌙' },
