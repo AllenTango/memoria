@@ -76,14 +76,12 @@ export function Layout({ children, siteName, sitePath, serverRunning, height, sh
         </Box>
       </Box>
 
-      {/* ── StatusBar ────────────────────────────────────── */}
-      <Box marginTop={1}>
-        {showCommandInput && onCommand && (
-          <Box marginBottom={1}>
-            <CommandInput visible={showCommandInput} onCommand={onCommand} />
-          </Box>
-        )}
+      {/* ── StatusBar + CommandInput ─────────────────────────── */}
+      <Box marginTop={1} flexDirection="column" gap={1}>
         <StatusBar serverRunning={serverRunning} />
+        {showCommandInput && onCommand && (
+          <CommandInput visible={showCommandInput} onCommand={onCommand} />
+        )}
       </Box>
     </Box>
   );
