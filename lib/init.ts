@@ -9,7 +9,7 @@ import { execSync } from 'child_process';
 import { ask, confirm, select } from './prompt';
 
 const __filename = fileURLToPath(import.meta.url);
-const PKG_ROOT = path.resolve(dirname(__filename), '..', '..');
+const PKG_ROOT = path.resolve(dirname(__filename), '..');
 
 interface ThemeColors {
   bg?: string | null;
@@ -148,7 +148,7 @@ async function initSite(args: [null, string, string?]): Promise<void> {
   const installSamples = isInteractive ? await confirm('是否安装示例内容（blog/vlog/photo 各一篇）', true) : true;
 
   // 复制模板（memoria init . 跳过后续步骤复用模板）
-  const templateDir = path.join(PKG_ROOT, 'assets', 'site-template');
+  const templateDir = path.join(PKG_ROOT, 'template');
   if (!fs.existsSync(templateDir)) {
     console.error('Error: site-template not found');
     process.exit(1);

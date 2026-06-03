@@ -36,14 +36,14 @@ export function isServerRunning(): boolean {
 }
 
 export function startServer(rootDir: string, port = 3000): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if (httpServer) {
       resolve();
       return;
     }
 
     // 先构建，确保 dist/ 最新
-    const { buildSite } = require('./build.js');
+    const { buildSite } = await import('./build.js');
     const result = buildSite({ rootDir });
     if (!result.success) {
       reject(new Error('构建失败: ' + result.errors.join(', ')));

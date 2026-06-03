@@ -253,7 +253,7 @@ export function renderIndex(
       @media (max-width: 500px) { .home-items { padding: 0 1rem 6rem; } .home-item-thumb { width: 90px; height: 65px; } .home-stats { padding: 2rem 1rem 1.5rem; } }
     </style>`;
 
-  return applyTemplate(template, { title: '首页 — Memoria', page: 'home', content });
+  return applyTemplate(template, { title: '首页 — Memoria', page: 'home', content, siteConfig });
 }
 
 export function renderBlogs({ blogs, siteConfig }: { blogs: CompiledItem[]; siteConfig: { name?: string; icon?: string } }, template: string): string {
