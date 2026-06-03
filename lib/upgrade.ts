@@ -4,9 +4,11 @@
  */
 import * as path from 'path';
 import * as fs from 'fs';
+import { fileURLToPath } from 'url';
 import { ask } from './prompt';
 
-const PKG_ROOT = path.resolve(__dirname, '..', '..');
+const __filename = fileURLToPath(import.meta.url);
+const PKG_ROOT = path.resolve(path.dirname(__filename), '..', '..');
 const BUILT_IN_THEMES_DIR = path.join(PKG_ROOT, 'themes');
 
 function copyDir(src: string, dst: string): void {

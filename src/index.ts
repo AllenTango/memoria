@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Memoria CLI - Entry Point
  * Supports both traditional commands and TUI slash commands
@@ -6,7 +5,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as http from 'http';
-import * as url from 'url';
+import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import matter from 'gray-matter';
 import { marked } from 'marked';
@@ -21,6 +20,10 @@ import {
   renderDetail,
 } from './renderer';
 import { addRecentProject, isMemoriaProject, getProjectName } from './tui/recent';
+
+// ── ESM compat ───────────────────────────────────────────────────────────────
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -60,7 +63,7 @@ function resolveThemePath(themeName: string, siteRoot: string): ResolvedTheme | 
 
 // ── Context factory ────────────────────────────────────────────────────────
 
-function createContext(rootDir: string): Context {
+export function createContext(rootDir: string): Context {
   const themeArg = process.argv.includes('--theme')
     ? process.argv[process.argv.indexOf('--theme') + 1]
     : null;
@@ -95,7 +98,7 @@ function createContext(rootDir: string): Context {
 
 // ── Root resolution ───────────────────────────────────────────────────────
 
-function resolveRootDir(): string {
+export function resolveRootDir(): string {
   const rootArg = process.argv.includes('--root')
     ? process.argv[process.argv.indexOf('--root') + 1]
     : null;

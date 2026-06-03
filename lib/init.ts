@@ -8,6 +8,9 @@ import { dirname, resolve } from 'path';
 import { execSync } from 'child_process';
 import { ask, confirm, select } from './prompt';
 
+const __filename = fileURLToPath(import.meta.url);
+const PKG_ROOT = path.resolve(dirname(__filename), '..', '..');
+
 interface ThemeColors {
   bg?: string | null;
   accent?: string | null;
@@ -28,8 +31,6 @@ interface SiteConfig {
   icon?: string;
   theme?: string;
 }
-
-const PKG_ROOT = path.resolve(__dirname, '..', '..');
 
 function copyDir(src: string, dst: string): void {
   fs.mkdirSync(dst, { recursive: true });

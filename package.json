@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "description": "轻型静态博客系统，支持文章/视讯/相册三种内容形态",
-  "main": "dist/src/index.js",
   "bin": {
-    "memoria": "dist/bin/memoria.js"
+    "memoria": "dist/cli.js"
   },
   "scripts": {
-    "build": "node scripts/build-esm.mjs"
+    "bundle": "esbuild bin/memoria.ts --bundle --platform=node --format=esm --target=node18 --outfile=dist/cli.js --banner:js=\"#!/usr/bin/env node\" --jsx=automatic --jsx-import-source=react --packages=external --external:react --external:ink --external:react-devtools-core",
+    "build": "npm run bundle && chmod +x dist/cli.js"
   },
   "keywords": [
     "static-site-generator",
