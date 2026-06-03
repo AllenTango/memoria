@@ -1,5 +1,5 @@
 /**
- * Hub — TUI main orchestrator
+ * App — TUI top-level state machine
  * 顶层状态机：状态管理 + 路由 + 事件分发
  * 所有业务逻辑委托给 lib/ 层
  */
@@ -27,7 +27,7 @@ interface MenuItem {
   cmd: string | null; // null = navigation/非命令项
 }
 
-function Hub(): React.ReactElement {
+function App(): React.ReactElement {
   const { exit } = useApp();
   const { columns } = useWindowSize();
   const W = Math.max(80, columns);
@@ -307,12 +307,12 @@ function Hub(): React.ReactElement {
   );
 }
 
-export async function showHub(cwd?: string): Promise<void> {
+export async function showApp(cwd?: string): Promise<void> {
   return new Promise((resolve) => {
     if (cwd && isMemoriaProject(cwd)) {
       addRecentProject(cwd);
     }
-    const { waitUntilExit } = render(<Hub />, {
+    const { waitUntilExit } = render(<App />, {
       alternateScreen: true,
       exitOnCtrlC: false,
     });

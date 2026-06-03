@@ -3,10 +3,8 @@
  */
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import * as path from 'path';
-import * as fs from 'fs';
 import { C } from '../contexts/TUIContext';
-import { StatusBar } from '../components/Frame';
+import { applyTheme } from '../../../lib/apply-theme';
 
 const BUILT_IN_THEMES = [
   { name: 'dracula', emoji: '🌙', desc: 'Dracula 暗黑系' },
@@ -26,19 +24,9 @@ export function ThemePicker({ projectRoot, onClose }: Props): React.ReactElement
   useInput((_, key) => {
     if (key.upArrow) setSelected((s: number) => (s - 1 + BUILT_IN_THEMES.length) % BUILT_IN_THEMES.length);
     else if (key.downArrow) setSelected((s: number) => (s + 1) % BUILT_IN_THEMES.length);
-    else if (key.return) { applyTheme(BUILT_IN_THEMES[selected].name); onClose(); }
+    else if (key.return) { applyTheme(projectRoot, BUILT_IN_THEMES[selected].name); onClose(); }
     else if (key.escape) onClose();
   });
-
-  function applyTheme(name: string): void {
-    fs.writeFileSync(path.join(projectRoot, '.themerc'), name);
-    const cfgPath = path.join(projectRoot, '_config.yml');
-    if (fs.existsSync(cfgPath)) {
-      let cfg = fs.readFileSync(cfgPath, 'utf-8');
-      cfg = cfg.replace(/^theme:.*$/m, `theme: ${name}`);
-      fs.writeFileSync(cfgPath, cfg);
-    }
-  }
 
   return (
     <Box flexDirection="column" flexGrow={1}>

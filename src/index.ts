@@ -355,8 +355,8 @@ async function main() {
       addRecentProject(rootDir);
       await helpCommand([], createContext(rootDir));
     } else {
-      const { showHub } = await import('./tui/hub');
-        await showHub();
+      const { showApp } = await import('./tui/app');
+        await showApp();
     }
     return;
   }
@@ -369,8 +369,8 @@ async function main() {
     switch (cmd) {
       case 'new':
       case 'open': {
-        const { showHub } = await import('./tui/hub');
-        await showHub();
+        const { showApp } = await import('./tui/app');
+        await showApp();
         return;
       }
       case 'preview': {

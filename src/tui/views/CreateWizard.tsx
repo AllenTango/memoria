@@ -3,13 +3,13 @@
  */
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import * as path from 'path';
-import * as fs from 'fs';
 import { C } from '../contexts/TUIContext';
 import { Spinner } from '../components/Spinner';
 import { BlinkingCursor } from '../components/BlinkingCursor';
 import { initSiteNonInteractive } from '../../../lib/init';
 import { addRecentProject } from '../../../lib/recent';
+import { applyTheme } from '../../../lib/apply-theme';
+import { isEmptyDir } from '../../../lib/content';
 
 const THEMES = [
   { label: 'Dracula', name: 'dracula', color: C.pink, emoji: '🌙' },
@@ -32,7 +32,9 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
     if (step === 0) {
       if (key.return) {
         if (!name.trim()) { setError('名称不能为空'); return; }
-        setTargetPath(path.resolve(process.cwd(), name.trim()));
+        const pathModule = require('path') as typeof import('path');
+        const computed = targetPath || pathModule.resolve(process.cwd(), name.trim());
+        setTargetPath(computed);
         setStep(1);
       } else if (key.backspace) {
         setName((n: string) => n.slice(0, -1));
@@ -45,8 +47,9 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
       }
     } else if (step === 1) {
       if (key.return) {
-        const resolved = targetPath.trim() || path.resolve(process.cwd(), name);
-        if (fs.existsSync(resolved) && fs.readdirSync(resolved).length > 0) {
+        const pathModule = require('path') as typeof import('path');
+        const resolved = targetPath.trim() || pathModule.resolve(process.cwd(), name);
+        if (!isEmptyDir(resolved)) {
           setError('目录非空，请使用空目录或更换路径');
           return;
         }
@@ -81,9 +84,8 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
   async function doCreate(): Promise<void> {
     const theme = THEMES[themeIdx].name;
     try {
-      fs.mkdirSync(targetPath, { recursive: true });
       await initSiteNonInteractive(targetPath, name, 'Your Name', '', '', true, true, theme);
-      fs.writeFileSync(path.join(targetPath, '.themerc'), theme);
+      applyTheme(targetPath, theme);
       addRecentProject(targetPath);
       setResult({ name, path: targetPath });
       setStep(4);
@@ -93,20 +95,19 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
     }
   }
 
-  const shortcuts: [string, string][] = step === 2
-    ? [['↑↓', '选择'], ['↵', '确认'], ['Esc', '返回']]
-    : step < 3
-    ? [['↵', '确认'], ['Esc', '返回']]
-    : [['↵', '继续']];
-
-  const displayPath = step > 0 ? targetPath || path.resolve(process.cwd(), name) : '';
-
   return (
     <Box flexDirection="column" flexGrow={1}>
       <Box borderStyle="round" borderColor={C.green} paddingX={1} flexDirection="column">
         <Box flexDirection="row" justifyContent="space-between">
           <Text bold color={C.green}>🆕 新建站点</Text>
-          {step > 0 && <Text dimColor>{displayPath}</Text>}
+          {step > 0 && (
+            <Text dimColor>
+              {targetPath || (() => {
+                const pathModule = require('path') as typeof import('path');
+                return pathModule.resolve(process.cwd(), name);
+              })()}
+            </Text>
+          )}
         </Box>
 
         <Box flexDirection="column" marginTop={1} gap={1}>
@@ -130,7 +131,10 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
                 <Text color={C.cyan} wrap="truncate">{targetPath || '<输入中>'}</Text>
                 <BlinkingCursor />
               </Box>
-              <Text dimColor>默认: {path.resolve(process.cwd(), name)}</Text>
+              <Text dimColor>默认: {(() => {
+                const pathModule = require('path') as typeof import('path');
+                return pathModule.resolve(process.cwd(), name);
+              })()}</Text>
               {error && <Text color={C.red}>✗ {error}</Text>}
             </>
           )}
