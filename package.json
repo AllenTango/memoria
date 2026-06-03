@@ -7,7 +7,7 @@
     "memoria": "dist/cli.js"
   },
   "scripts": {
-    "bundle": "esbuild bin/memoria.ts --bundle --platform=node --format=esm --target=node18 --outfile=dist/cli.js --banner:js=\"#!/usr/bin/env node\" --jsx=automatic --jsx-import-source=react --packages=external --external:react --external:ink --external:react-devtools-core",
+    "bundle": "esbuild bin/memoria.ts --bundle --platform=node --format=esm --target=node18 --outfile=dist/cli.js --banner:js=\"#!/usr/bin/env node\" --jsx=automatic --jsx-import-source=react --external:react --external:ink --external:react-devtools-core --external:gray-matter --external:highlight.js --external:marked --external:prompts",
     "build": "npm run bundle && chmod +x dist/cli.js"
   },
   "keywords": [
