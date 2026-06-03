@@ -18,7 +18,8 @@
     "declaration": false,
     "sourceMap": false,
     "allowSyntheticDefaultImports": true,
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
     "jsx": "react-jsx"
   },
   "include": [
