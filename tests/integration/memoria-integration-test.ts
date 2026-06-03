@@ -15,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
-const MEMORIA_SRC = path.join(PROJECT_ROOT, 'dist', 'bin', 'memoria.js');
+const MEMORIA_SRC = path.join(PROJECT_ROOT, 'dist', 'cli.js');
 const FIXTURES_DIR = path.join(PROJECT_ROOT, 'tests', 'fixtures');
 // 日志写到系统临时目录，确保可写
 const LOG_FILE = path.join('/tmp', `memoria-test-${timestamp()}.log`);
