@@ -1,10 +1,11 @@
 /**
- * Layout — 四区布局：Header + Sidebar(30%) + Detail(70%) + StatusBar
+ * Layout — 四区布局：Header + Sidebar(30%) + Detail(70%) + StatusBar + CommandInput
  */
 import React from 'react';
 import { Box, Text } from 'ink';
 import { C } from '../contexts/TUIContext';
 import { StatusBar } from './StatusBar';
+import { CommandInput } from './CommandInput';
 
 interface LayoutProps {
   children: [React.ReactNode, React.ReactNode]; // [Sidebar, Detail]
@@ -12,9 +13,11 @@ interface LayoutProps {
   sitePath?: string;
   serverRunning: boolean;
   height?: number;
+  showCommandInput?: boolean;
+  onCommand?: (cmd: string) => void;
 }
 
-export function Layout({ children, siteName, sitePath, serverRunning, height }: LayoutProps): React.ReactElement {
+export function Layout({ children, siteName, sitePath, serverRunning, height, showCommandInput, onCommand }: LayoutProps): React.ReactElement {
   const now = new Date();
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
@@ -75,6 +78,11 @@ export function Layout({ children, siteName, sitePath, serverRunning, height }: 
 
       {/* ── StatusBar ────────────────────────────────────── */}
       <Box marginTop={1}>
+        {showCommandInput && onCommand && (
+          <Box marginBottom={1}>
+            <CommandInput visible={showCommandInput} onCommand={onCommand} />
+          </Box>
+        )}
         <StatusBar serverRunning={serverRunning} />
       </Box>
     </Box>

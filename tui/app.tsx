@@ -28,7 +28,6 @@ import { NewContentWizard } from './views/NewContentWizard';
 import { ThemePicker } from './views/ThemePicker';
 import { RecentList } from './views/RecentList';
 import { PathInput } from './views/PathInput';
-import { CommandPalette } from './views/CommandPalette';
 
 // ── 类型 ──────────────────────────────────────────────
 
@@ -56,7 +55,6 @@ function App(): React.ReactElement {
 
   const [screen, setScreen] = useState<Screen>('main');
   const [currentProject, setCurrentProject] = useState<string | null>(null);
-  const [showPalette, setShowPalette] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ cmd: string; label: string } | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'ok' | 'err' | 'warn' | 'info'; msg: string } | null>(null);
 
@@ -165,7 +163,7 @@ function App(): React.ReactElement {
 
   useInput((input, key) => {
     // 命令面板开启时忽略其他输入
-    if (showPalette || confirmTarget) return;
+    if (confirmTarget) return;
 
     // 全局快捷键
     if (key.ctrl && input === 'c') { doExit(); return; }
@@ -180,7 +178,6 @@ function App(): React.ReactElement {
         void handleStopServer();
         return;
       }
-      if (input === '/') { setShowPalette(true); return; }
       if (input === 'x' || input === 'X') {
         // 关闭项目，返回站点选择
         setCurrentProject(null);
@@ -194,7 +191,6 @@ function App(): React.ReactElement {
     if (screen === 'main' && !currentProject) {
       if (input === 'c' || input === 'C') { setScreen('create'); return; }
       if (input === 'o' || input === 'O') { setScreen('open'); return; }
-      if (input === '/') { setShowPalette(true); return; }
       if (input === 'x' || input === 'X') { doExit(); return; }
     }
   });
@@ -398,7 +394,7 @@ function App(): React.ReactElement {
     const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     return (
-      <Layout siteName={undefined} sitePath={undefined} serverRunning={serverRunning} height={rows}>
+      <Layout siteName={undefined} sitePath={undefined} serverRunning={serverRunning} height={rows} showCommandInput={false}>
         <>
           {/* Left Sidebar — 菜单列表 */}
           <Box flexDirection="column" flexGrow={1}>
@@ -446,7 +442,7 @@ function App(): React.ReactElement {
   // ── Create Wizard 视图（统一 Layout）─────────────
   if (!currentProject && screen === 'create') {
     return (
-      <Layout siteName="新建站点" sitePath={undefined} serverRunning={serverRunning} height={rows}>
+      <Layout siteName="新建站点" sitePath={undefined} serverRunning={serverRunning} height={rows} showCommandInput={false}>
         <>
           {/* Left Sidebar — 创建引导 */}
           <Box flexDirection="column" gap={1}>
@@ -470,18 +466,6 @@ function App(): React.ReactElement {
     );
   }
 
-  // ── Command Palette Overlay ───────────────────────
-  if (showPalette) {
-    return (
-      <Box position="absolute" top={0} left={0} right={0} bottom={0}>
-        <CommandPalette
-          onCommand={(cmd) => { setShowPalette(false); handleCommand(cmd); }}
-          onClose={() => setShowPalette(false)}
-        />
-      </Box>
-    );
-  }
-
   // ── ThemePicker 视图（统一 Layout）────────────────
   if (screen === 'theme' && currentProject) {
     return (
@@ -490,6 +474,7 @@ function App(): React.ReactElement {
         sitePath={currentProject}
         serverRunning={serverRunning}
         height={rows}
+        showCommandInput={false}
       >
         <>
           {/* Left Sidebar — 主题选择引导 */}
@@ -524,6 +509,7 @@ function App(): React.ReactElement {
         sitePath={currentProject}
         serverRunning={serverRunning}
         height={rows}
+        showCommandInput={false}
       >
         <>
           {/* Left Sidebar — 新建内容引导 */}
@@ -558,6 +544,8 @@ function App(): React.ReactElement {
       sitePath={currentProject}
       serverRunning={serverRunning}
       height={rows}
+      showCommandInput={true}
+      onCommand={handleCommand}
     >
       <>
         {/* Left Sidebar — FileTree */}
