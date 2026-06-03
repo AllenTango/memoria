@@ -11,6 +11,8 @@ import { compileAllContent } from '../core/compiler.js';
 import { renderIndex, renderBlogs, renderVlogs, renderPhotos, renderAbout, renderDetail } from '../core/renderer.js';
 import { ensureDir, writeFile, slugify } from '../core/utils.js';
 
+// ── Types ─────────────────────────────────────────────────────────────────
+
 export interface BuildOptions {
   rootDir: string;
   theme?: string;
@@ -19,38 +21,84 @@ export interface BuildOptions {
 export interface BuildResult {
   success: boolean;
   outputDir: string;
-  stats: {
-    blogs: number;
-    vlogs: number;
-    photos: number;
-  };
   errors: string[];
+  stats?: { blogs: number; vlogs: number; photos: number; pages: number };
 }
 
-/**
- * 构建站点 — 返回结果对象（可测试）
- */
+export interface Context {
+  rootDir: string;
+  currentTheme: string;
+  themeDir: string;
+  outputDir: string;
+  contentDir: string;
+}
+
+// ── Context factory ────────────────────────────────────────────────────────
+
+const defaultTheme = 'dracula';
+
+export function createContext(rootDir: string): Context {
+  const themeArg = process.argv.includes('--theme')
+    ? process.argv[process.argv.indexOf('--theme') + 1]
+    : null;
+
+  const theme = resolveThemePath(themeArg || savedTheme(rootDir) || defaultTheme, rootDir);
+  if (!theme) {
+    console.error('❌ 未找到主题: ' + (themeArg || savedTheme(rootDir) || defaultTheme));
+    process.exit(1);
+  }
+
+  const templateCheck = path.join(theme.path, 'template.html');
+  if (!fs.existsSync(templateCheck)) {
+    console.error('❌ 主题验证失败: template.html 不存在');
+    process.exit(1);
+  }
+
+  return {
+    rootDir,
+    currentTheme: themeArg || savedTheme(rootDir) || defaultTheme,
+    themeDir: theme.path,
+    outputDir: path.join(rootDir, 'dist'),
+    contentDir: path.join(rootDir, 'content'),
+  };
+}
+
+function savedTheme(rootDir: string): string | null {
+  const rc = path.join(rootDir, '.themerc');
+  return fs.existsSync(rc) ? fs.readFileSync(rc, 'utf-8').trim() : null;
+}
+
+function resolveThemePath(name: string, siteRoot: string): { type: 'built-in' | 'user' | 'external'; path: string } | null {
+  if (name.startsWith('/') || name.startsWith('~')) {
+    const p = path.resolve(name.replace(/^~/, process.env.HOME || ''));
+    return fs.existsSync(path.join(p, 'template.html')) ? { type: 'external', path: p } : null;
+  }
+  const userPath = path.join(siteRoot, 'themes', name);
+  if (fs.existsSync(path.join(userPath, 'template.html'))) return { type: 'user', path: userPath };
+  const builtin = path.join(findPkgRoot(), 'themes', name);
+  if (fs.existsSync(path.join(builtin, 'template.html'))) return { type: 'built-in', path: builtin };
+  return null;
+}
+
+// ── Build ────────────────────────────────────────────────────────────────
+
 export function buildSite(opts: BuildOptions): BuildResult {
   const { rootDir, theme: themeArg } = opts;
   const errors: string[] = [];
 
-  // 解析主题
-  const themeName = themeArg ?? getSavedTheme(rootDir) ?? 'dracula';
+  const themeName = themeArg ?? savedTheme(rootDir) ?? 'dracula';
   const theme = resolveThemePath(themeName, rootDir);
   if (!theme) {
-    return { success: false, outputDir: '', stats: { blogs: 0, vlogs: 0, photos: 0 }, errors: [`Theme not found: ${themeName}`] };
+    return { success: false, outputDir: '', errors: [`Theme not found: ${themeName}`] };
   }
 
-  // 编译内容
   const contentDir = path.join(rootDir, 'content');
   if (!fs.existsSync(contentDir)) {
-    errors.push(`content/ not found in ${rootDir}`);
-    return { success: false, outputDir: '', stats: { blogs: 0, vlogs: 0, photos: 0 }, errors };
+    return { success: false, outputDir: '', errors: [`content/ not found in ${rootDir}`] };
   }
 
   const { blogs, vlogs, photos, all } = compileAllContent(contentDir);
 
-  // 渲染
   const outputDir = path.join(rootDir, 'dist');
   ensureDir(outputDir);
 
@@ -63,36 +111,34 @@ export function buildSite(opts: BuildOptions): BuildResult {
   writeFile(path.join(outputDir, 'blogs.html'), renderBlogs({ blogs, siteConfig }, template));
   writeFile(path.join(outputDir, 'vlogs.html'), renderVlogs({ vlogs, siteConfig }, template));
   writeFile(path.join(outputDir, 'photos.html'), renderPhotos({ photos, siteConfig }, template));
-  writeFile(path.join(outputDir, 'about.html'), renderAbout({ siteConfig }, template));
+  writeFile(path.join(outputDir, 'about.html'), renderAbout({ aboutData: null, siteConfig }, template));
 
   ensureDir(path.join(outputDir, 'blog'));
   ensureDir(path.join(outputDir, 'vlog'));
   ensureDir(path.join(outputDir, 'photo'));
 
+  let pages = 5; // index + blogs + vlogs + photos + about
   for (const { items } of [{ items: blogs }, { items: vlogs }, { items: photos }]) {
     for (const item of items) {
       const dir = item.type === 'blog' ? 'blog' : item.type === 'vlog' ? 'vlog' : 'photo';
       const itemDir = path.join(outputDir, dir, slugify(item.title));
       ensureDir(itemDir);
       writeFile(path.join(itemDir, 'index.html'), renderDetail(item, items, template));
+      pages++;
     }
   }
 
   return {
     success: true,
     outputDir,
-    stats: { blogs: blogs.length, vlogs: vlogs.length, photos: photos.length },
     errors: [],
+    stats: { blogs: blogs.length, vlogs: vlogs.length, photos: photos.length, pages },
   };
 }
 
-/**
- * 启动预览服务器（阻塞）
- */
 export async function startPreview(opts: BuildOptions): Promise<never> {
   const { rootDir } = opts;
 
-  // 先构建一次
   const result = buildSite(opts);
   if (!result.success) {
     console.error('Build failed:', result.errors.join(', '));
@@ -120,18 +166,13 @@ export async function startPreview(opts: BuildOptions): Promise<never> {
   });
 
   server.listen(PORT, () => {
-    console.log(`Preview server running at http://localhost:${PORT}/`);
-    console.log('Press Ctrl+C to stop');
+    console.log(`\n🌐 Preview server running at http://localhost:${PORT}/\n`);
   });
 
-  // 保持进程
   process.stdin.resume();
-  await new Promise(() => {}); // never resolves
+  await new Promise(() => {});
 }
 
-/**
- * 打包站点
- */
 export function bundleSite(opts: BuildOptions): BuildResult {
   const result = buildSite(opts);
   if (!result.success) return result;
@@ -142,27 +183,11 @@ export function bundleSite(opts: BuildOptions): BuildResult {
 
   if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
   execSync(`cd "${result.outputDir}" && zip -r "${zipPath}" .`, { stdio: 'inherit' });
+
   return result;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────
-
-function getSavedTheme(rootDir: string): string | null {
-  const rc = path.join(rootDir, '.themerc');
-  return fs.existsSync(rc) ? fs.readFileSync(rc, 'utf-8').trim() : null;
-}
-
-function resolveThemePath(name: string, siteRoot: string): { type: 'built-in' | 'user' | 'external'; path: string } | null {
-  if (name.startsWith('/') || name.startsWith('~')) {
-    const p = path.resolve(name.replace(/^~/, process.env.HOME || ''));
-    return fs.existsSync(path.join(p, 'template.html')) ? { type: 'external', path: p } : null;
-  }
-  const userPath = path.join(siteRoot, 'themes', name);
-  if (fs.existsSync(path.join(userPath, 'template.html'))) return { type: 'user', path: userPath };
-  const builtin = path.join(findPkgRoot(), 'themes', name);
-  if (fs.existsSync(path.join(builtin, 'template.html'))) return { type: 'built-in', path: builtin };
-  return null;
-}
 
 function loadSiteConfig(rootDir: string): { name: string; icon: string } {
   const configPath = path.join(rootDir, '_config.yml');
