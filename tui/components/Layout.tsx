@@ -11,14 +11,15 @@ interface LayoutProps {
   siteName?: string;
   sitePath?: string;
   serverRunning: boolean;
+  height?: number;
 }
 
-export function Layout({ children, siteName, sitePath, serverRunning }: LayoutProps): React.ReactElement {
+export function Layout({ children, siteName, sitePath, serverRunning, height }: LayoutProps): React.ReactElement {
   const now = new Date();
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   return (
-    <Box flexDirection="column" flexGrow={1}>
+    <Box flexDirection="column" flexGrow={1} height={height}>
       {/* ── Header ──────────────────────────────────────── */}
       <Box
         borderStyle="round"
@@ -31,6 +32,9 @@ export function Layout({ children, siteName, sitePath, serverRunning }: LayoutPr
         <Text bold color={C.purple}>📚 Memoria v1.0</Text>
         {siteName && (
           <Text dimColor>📂 {siteName}</Text>
+        )}
+        {sitePath && (
+          <Text dimColor color={C.muted}>{sitePath}</Text>
         )}
         <Text dimColor>{dateStr}</Text>
       </Box>

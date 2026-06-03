@@ -44,14 +44,12 @@ export function createContext(rootDir: string): Context {
 
   const theme = resolveThemePath(themeArg || savedTheme(rootDir) || defaultTheme, rootDir);
   if (!theme) {
-    console.error('❌ 未找到主题: ' + (themeArg || savedTheme(rootDir) || defaultTheme));
-    process.exit(1);
+    return { success: false, outputDir: '', errors: [`Theme not found: ${themeArg || savedTheme(rootDir) || defaultTheme}`] };
   }
 
   const templateCheck = path.join(theme.path, 'template.html');
   if (!fs.existsSync(templateCheck)) {
-    console.error('❌ 主题验证失败: template.html 不存在');
-    process.exit(1);
+    return { success: false, outputDir: '', errors: ['Theme validation failed: template.html not found'] };
   }
 
   return {

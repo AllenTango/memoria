@@ -194,6 +194,7 @@ function App(): React.ReactElement {
     if (screen === 'main' && !currentProject) {
       if (input === 'c' || input === 'C') { setScreen('create'); return; }
       if (input === 'o' || input === 'O') { setScreen('open'); return; }
+      if (input === '/') { setShowPalette(true); return; }
       if (input === 'x' || input === 'X') { doExit(); return; }
     }
   });
@@ -391,7 +392,7 @@ function App(): React.ReactElement {
     const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     return (
-      <Layout siteName={undefined} sitePath={undefined} serverRunning={serverRunning}>
+      <Layout siteName={undefined} sitePath={undefined} serverRunning={serverRunning} height={rows}>
         <>
           {/* Left Sidebar — 菜单列表 */}
           <Box flexDirection="column" flexGrow={1}>
@@ -439,7 +440,7 @@ function App(): React.ReactElement {
   // ── Create Wizard 视图（统一 Layout）─────────────
   if (!currentProject && screen === 'create') {
     return (
-      <Layout siteName="新建站点" sitePath={undefined} serverRunning={serverRunning}>
+      <Layout siteName="新建站点" sitePath={undefined} serverRunning={serverRunning} height={rows}>
         <>
           {/* Left Sidebar — 创建引导 */}
           <Box flexDirection="column" gap={1}>
@@ -482,6 +483,7 @@ function App(): React.ReactElement {
       siteName={currentProject ? getProjectName(currentProject) : undefined}
       sitePath={currentProject}
       serverRunning={serverRunning}
+      height={rows}
     >
       <>
         {/* Left Sidebar — FileTree */}

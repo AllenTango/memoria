@@ -87,7 +87,7 @@ export function startServer(rootDir: string, port = 3000): Promise<void> {
       // 自动打开浏览器
       const openCmd = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
       exec(`${openCmd} http://localhost:${port}`, (err) => {
-        if (err) console.log('自动打开浏览器失败，请手动访问');
+        // 自动打开浏览器失败，静默忽略，不污染 stdout
       });
 
       resolve();
