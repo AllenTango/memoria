@@ -10,7 +10,7 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const PROJECT_ROOT = path.resolve(__dirname, '..');
+const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const MEMORIA_SRC = path.join(PROJECT_ROOT, 'dist', 'bin', 'memoria.js');
 const FIXTURES_DIR = path.join(PROJECT_ROOT, 'tests', 'fixtures');
 // 日志写到系统临时目录，确保可写

@@ -141,10 +141,10 @@ memoria sync
 
 ## 实现原理
 
-所有命令位于 `memoria/lib/cli-content.ts`，使用 Node.js 原生 `readline` 模块实现交互式输入，不依赖外部库。
+所有命令位于 `memoria/lib/cli.ts`（CLI 路由）和 `memoria/lib/content.ts`（内容创建命令），使用 `prompts` 库实现交互式输入。
 
 ```typescript
-// 命令映射（memoria/lib/cli-content.ts）
+// 命令映射（memoria/lib/cli.ts）
 const commands: Record<string, () => void> = {
   'new:blog':   cmdNewBlog,
   'new:vlog':   cmdNewVlog,

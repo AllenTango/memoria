@@ -83,7 +83,7 @@ jobs:
         run: npm install -D tsx
 
       - name: Run integration tests
-        run: npx tsx tests/memoria-integration-test.ts
+        run: npx tsx tests/integration/memoria-integration-test.ts
         env:
           FORCE_COLOR: '0'
 
