@@ -1,21 +1,17 @@
 /**
  * Hub — TUI main orchestrator
- * Modern FlexBox layout (no ASCII boxes)
- * Uses Ink borderStyle + flexGrow for app-like feel
+ * 顶层状态机：状态管理 + 路由 + 事件分发
+ * 所有业务逻辑委托给 lib/ 层
  */
 import React, { useState, useEffect } from 'react';
 import { render, Box, Text, useInput, useWindowSize, useApp } from 'ink';
-import { execSync } from 'child_process';
-import { fileURLToPath } from 'url';
-import * as path from 'path';
-import * as fs from 'fs';
 
 import { C } from './contexts/TUIContext';
-import { Header, Footer, StatusBar } from './components/Frame';
-import { SelectableList } from './components/SelectableList';
 import { ConfirmBox } from './components/ConfirmBox';
+import { SelectableList } from './components/SelectableList';
 
 import { getRecentProjects, addRecentProject, isMemoriaProject, getProjectName } from '../../lib/recent';
+import { buildSite, bundleSite, startPreview } from '../../lib/build';
 import { CreateWizard } from './views/CreateWizard';
 import { NewContentWizard } from './views/NewContentWizard';
 import { ThemePicker } from './views/ThemePicker';
@@ -24,6 +20,12 @@ import { PathInput } from './views/PathInput';
 import { CommandPalette } from './views/CommandPalette';
 
 type Screen = 'main' | 'create' | 'open' | 'browse' | 'newContent' | 'theme';
+
+interface MenuItem {
+  label: string;
+  color: string;
+  cmd: string | null; // null = navigation/非命令项
+}
 
 function Hub(): React.ReactElement {
   const { exit } = useApp();
@@ -35,9 +37,11 @@ function Hub(): React.ReactElement {
   const [currentProject, setCurrentProject] = useState<string | null>(null);
   const [showPalette, setShowPalette] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ cmd: string; label: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'ok' | 'err' | 'warn' | 'info'; msg: string } | null>(null);
 
   const recents = getRecentProjects().slice(0, 5);
 
+  // 自动检测当前目录
   useEffect(() => {
     const cwd = process.cwd();
     if (isMemoriaProject(cwd)) {
@@ -45,115 +49,111 @@ function Hub(): React.ReactElement {
     }
   }, []);
 
+  // 键盘输入分发
   useInput((input, key) => {
     if (showPalette || confirmTarget) return;
-    if (key.ctrl && input === 'c') { sayBye(); return; }
+    if (key.ctrl && input === 'c') { doExit(); return; }
 
     if (screen === 'main') {
       if (input === '/') { setShowPalette(true); return; }
-      if (key.upArrow) setSelected((s: number) => Math.max(0, s - 1));
-      else if (key.downArrow) setSelected((s: number) => Math.min(maxMenuItems() - 1, s + 1));
+      if (key.upArrow) setSelected(s => Math.max(0, s - 1));
+      else if (key.downArrow) setSelected(s => Math.min(maxMenuItems() - 1, s + 1));
       else if (key.return) handleMainSelect();
-      else if (input === 'x' || input === 'X') sayBye();
+      else if (input === 'x' || input === 'X') doExit();
     }
   });
 
+  // ── helpers ────────────────────────────────────────────────────────────
+
   function maxMenuItems(): number {
     return currentProject ? 7 : 2;
-  }
-
-  function handleMainSelect(): void {
-    if (!currentProject) {
-      if (selected === 0) setScreen('create');
-      else if (selected === 1) setScreen('open');
-      else sayBye();
-    } else {
-      const cmds = ['generate', 'bundle', 'server', 'new', 'theme', 'deploy', 'exit'];
-      const cmd = cmds[selected];
-      if (cmd === 'exit') sayBye();
-      else if (cmd === 'new') { setScreen('newContent'); }
-      else if (cmd === 'theme') { setScreen('theme'); }
-      else setConfirmTarget({ cmd, label: cmd });
-    }
   }
 
   function openProject(root: string): void {
     addRecentProject(root);
     setCurrentProject(root);
     setScreen('main');
-    console.log(`\n${C.green}✓ 已打开: ${getProjectName(root)}${C.fg}`);
-    console.log(`  ${C.muted}${root}${C.fg}\n`);
+    setFeedback({ type: 'ok', msg: `✓ 已打开: ${getProjectName(root)}` });
   }
 
-  function executeProjectCmd(cmd: string): void {
+  // ── menu handlers ───────────────────────────────────────────────────────
+
+  function handleMainSelect(): void {
+    if (!currentProject) {
+      if (selected === 0) setScreen('create');
+      else if (selected === 1) setScreen('open');
+      else doExit();
+    } else {
+      const cmds = ['generate', 'bundle', 'server', 'new', 'theme', 'deploy', 'exit'] as const;
+      const cmd = cmds[selected];
+      if (cmd === 'exit') doExit();
+      else if (cmd === 'new') { setScreen('newContent'); }
+      else if (cmd === 'theme') { setScreen('theme'); }
+      else { setConfirmTarget({ cmd, label: cmd }); }
+    }
+  }
+
+  async function executeCmd(cmd: string): Promise<void> {
     if (!currentProject) return;
     setConfirmTarget(null);
-    const pkgRoot = findPkgRoot();
+    setFeedback({ type: 'info', msg: `▶ 执行: memoria ${cmd}` });
+
     try {
-      console.log(`\n${C.cyan}▶ 执行: memoria ${cmd}${C.fg}\n`);
       if (cmd === 'generate') {
-        execSync(`node "${path.join(pkgRoot, 'dist', 'bin', 'memoria.js')}" build`, { cwd: currentProject, stdio: 'inherit' });
-        console.log(`\n${C.green}✓ 构建完成${C.fg}\n`);
+        const result = buildSite({ rootDir: currentProject });
+        if (result.success) {
+          setFeedback({ type: 'ok', msg: `✓ 构建完成 (${result.stats.blogs} blogs, ${result.stats.vlogs} vlogs, ${result.stats.photos} photos)` });
+        } else {
+          setFeedback({ type: 'err', msg: `✗ 构建失败: ${result.errors.join(', ')}` });
+        }
       } else if (cmd === 'bundle') {
-        execSync(`node "${path.join(pkgRoot, 'dist', 'bin', 'memoria.js')}" build`, { cwd: currentProject, stdio: 'inherit' });
-        const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
-        const zipName = `memoria-${date}.zip`;
-        const zipPath = path.join(currentProject, zipName);
-        if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
-        execSync(`cd "${path.join(currentProject, 'dist')}" && zip -r "${zipPath}" .`, { stdio: 'inherit' });
-        console.log(`\n${C.green}✓ 打包完成${C.fg}\n`);
+        const result = bundleSite({ rootDir: currentProject });
+        if (result.success) {
+          setFeedback({ type: 'ok', msg: `✓ 打包完成` });
+        } else {
+          setFeedback({ type: 'err', msg: `✗ 打包失败: ${result.errors.join(', ')}` });
+        }
       } else if (cmd === 'server') {
-        execSync(`node "${path.join(pkgRoot, 'dist', 'bin', 'memoria.js')}" preview --watch`, { cwd: currentProject, stdio: 'inherit' });
+        setFeedback({ type: 'info', msg: '🌐 启动预览服务器...' });
+        await startPreview({ rootDir: currentProject });
       } else if (cmd === 'deploy') {
-        console.log(`\n${C.yellow}⚠ deploy 功能开发中${C.fg}\n`);
+        setFeedback({ type: 'warn', msg: '⚠ deploy 功能开发中' });
       }
-    } catch {
-      console.log(`\n${C.red}✗ 执行失败${C.fg}\n`);
+    } catch (err) {
+      setFeedback({ type: 'err', msg: `✗ 执行失败: ${err instanceof Error ? err.message : String(err)}` });
     }
   }
 
-  function findPkgRoot(): string {
-    const __filename = fileURLToPath(import.meta.url);
-    let dir = path.dirname(__filename);
-    for (let i = 0; i < 6; i++) {
-      if (fs.existsSync(path.join(dir, 'package.json'))) return dir;
-      dir = path.dirname(dir);
-    }
-    return dir;
-  }
-
-  function handleCommand(cmd: string): void {
-    const c = cmd.trim();
+  function handleCommand(input: string): void {
+    const c = input.trim();
     if (!c) return;
     if (c === '/create') { setScreen('create'); return; }
     if (c === '/open') { setScreen('open'); return; }
-    if (c === '/exit' || c === '/quit') { sayBye(); return; }
-    if (currentProject) {
-      const bare = c.replace(/^\/+/, '');
-      if (['generate', 'bundle', 'server', 'deploy'].includes(bare)) {
-        executeProjectCmd(bare); return;
-      }
-    } else {
-      const bare = c.replace(/^\/+/, '');
-      if (['generate', 'bundle', 'server', 'deploy'].includes(bare)) {
-        console.log(`\n${C.yellow}⚠ 请先打开一个项目${C.fg}\n`);
+    if (c === '/exit' || c === '/quit') { doExit(); return; }
+
+    const bare = c.replace(/^\/+/, '');
+    if (['generate', 'bundle', 'server', 'deploy'].includes(bare)) {
+      if (!currentProject) {
+        setFeedback({ type: 'warn', msg: '⚠ 请先打开一个项目' });
         return;
       }
+      void executeCmd(bare);
+    } else {
+      setFeedback({ type: 'err', msg: `✗ 未知命令: ${c}` });
     }
-    console.log(`\n${C.red}✗ 未知命令: ${c}${C.fg}\n`);
   }
 
-  function sayBye(): void {
-    console.log(`\n${C.muted}再见！👋${C.fg}\n`);
-    exit();
+  function doExit(): void {
+    setFeedback({ type: 'info', msg: '再见！👋' });
+    setTimeout(() => exit(), 100);
   }
 
-  // ── Screen routing ───────────────────────────────────────────────
+  // ── screen routing ─────────────────────────────────────────────────────
 
   if (screen === 'create') {
     return (
       <Box flexDirection="column" width={W} minWidth={80}>
-        <CreateWizard onComplete={(p) => { if (p) openProject(p); else setScreen('main'); }} />
+        <CreateWizard onComplete={(p) => { if (p) openProject(p); setScreen('main'); }} />
       </Box>
     );
   }
@@ -177,11 +177,11 @@ function Hub(): React.ReactElement {
         <PathInput
           onSubmit={(dir) => {
             if (isMemoriaProject(dir)) openProject(dir);
-            else if (fs.existsSync(dir)) {
-              console.log(`\n${C.yellow}⚠ 该目录不是 Memoria 项目${C.fg}\n`);
+            else if (process.env.DEV) {
+              setFeedback({ type: 'warn', msg: '⚠ 该目录不是 Memoria 项目' });
               setScreen('open');
             } else {
-              console.log(`\n${C.red}✗ 目录不存在${C.fg}\n`);
+              setFeedback({ type: 'err', msg: '✗ 目录不存在或不是项目' });
               setScreen('open');
             }
           }}
@@ -207,22 +207,22 @@ function Hub(): React.ReactElement {
     );
   }
 
-  // ── Main screen ──────────────────────────────────────────────────
+  // ── main screen ─────────────────────────────────────────────────────────
 
-  const menuItems = currentProject
+  const menuItems: MenuItem[] = currentProject
     ? [
-        { label: '🔨  generate   构建站点',      color: C.green },
-        { label: '📦  bundle     构建 + 打包',  color: C.orange },
-        { label: '🌐  server     本地预览',      color: C.purple },
-        { label: '📝  new        新建内容',      color: C.cyan },
-        { label: '🎨  theme      切换主题',      color: C.pink },
-        { label: '🚀  deploy     部署站点',      color: C.green },
-        { label: 'x   exit       退出项目',      color: C.muted },
+        { label: '🔨  generate   构建站点',    color: C.green, cmd: 'generate' },
+        { label: '📦  bundle     构建+打包',   color: C.orange, cmd: 'bundle' },
+        { label: '🌐  server     本地预览',    color: C.purple, cmd: 'server' },
+        { label: '📝  new        新建内容',    color: C.cyan, cmd: null },
+        { label: '🎨  theme      切换主题',    color: C.pink, cmd: null },
+        { label: '🚀  deploy     部署站点',    color: C.green, cmd: 'deploy' },
+        { label: 'x   exit       退出项目',    color: C.muted, cmd: null },
       ]
     : [
-        { label: '➕  create     新建站点',     color: C.green },
-        { label: '📂  open       打开项目',     color: C.cyan },
-        { label: 'x   exit       退出',         color: C.muted },
+        { label: '➕  create     新建站点',    color: C.green, cmd: null },
+        { label: '📂  open       打开项目',    color: C.cyan, cmd: null },
+        { label: 'x   exit       退出',        color: C.muted, cmd: null },
       ];
 
   return (
@@ -242,7 +242,11 @@ function Hub(): React.ReactElement {
           <Box flexDirection="column" marginTop={1} gap={0}>
             {menuItems.map((item, i) => (
               <Box key={i} flexDirection="row">
-                <Text color={i === selected ? item.color : C.muted} bold={i === selected} wrap="truncate">
+                <Text
+                  color={i === selected ? item.color : C.muted}
+                  bold={i === selected}
+                  wrap="truncate"
+                >
                   {i === selected ? '▶ ' : '  '}{item.label}
                 </Text>
               </Box>
@@ -250,6 +254,15 @@ function Hub(): React.ReactElement {
           </Box>
         </Box>
       </Box>
+
+      {/* Feedback */}
+      {feedback && (
+        <Box marginTop={1} borderStyle="round" borderColor={feedback.type === 'err' ? C.red : feedback.type === 'warn' ? C.yellow : feedback.type === 'ok' ? C.green : C.muted} paddingX={1}>
+          <Text color={feedback.type === 'err' ? C.red : feedback.type === 'warn' ? C.yellow : feedback.type === 'ok' ? C.green : C.muted}>
+            {feedback.msg}
+          </Text>
+        </Box>
+      )}
 
       {/* Recent projects */}
       {!currentProject && recents.length > 0 && (
@@ -270,7 +283,7 @@ function Hub(): React.ReactElement {
         </Text>
       </Box>
 
-      {/* Command palette overlay */}
+      {/* Command palette */}
       {showPalette && (
         <Box position="absolute" top={0} left={0} right={0} bottom={0}>
           <CommandPalette
@@ -280,12 +293,12 @@ function Hub(): React.ReactElement {
         </Box>
       )}
 
-      {/* Confirm dialog overlay */}
+      {/* Confirm dialog */}
       {confirmTarget && (
         <Box position="absolute" top={0} left={0} right={0} bottom={0}>
           <ConfirmBox
             message={`执行 /${confirmTarget.label}？`}
-            onConfirm={() => executeProjectCmd(confirmTarget.cmd)}
+            onConfirm={() => void executeCmd(confirmTarget.cmd)}
             onCancel={() => setConfirmTarget(null)}
           />
         </Box>
