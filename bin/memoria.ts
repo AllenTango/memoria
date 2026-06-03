@@ -82,7 +82,7 @@ async function main() {
   }
 
   // 无参数 → TUI（ink + react）
-  const { showApp } = await import('../src/tui/app.js');
+  const { showApp } = await import('../tui/app.js');
   await showApp(process.cwd());
   process.exit(0);
 }

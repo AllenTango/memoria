@@ -6,7 +6,7 @@ import { Box, Text, useInput } from 'ink';
 import { C } from '../contexts/TUIContext';
 import { Spinner } from '../components/Spinner';
 import { BlinkingCursor } from '../components/BlinkingCursor';
-import { createContent } from '../../../lib/content';
+import { createContent } from '../../lib/content';
 
 const CONTENT_TYPES = [
   { key: 'blog', label: '文章', color: C.green, emoji: '📝' },

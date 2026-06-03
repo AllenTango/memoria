@@ -6,10 +6,10 @@ import { Box, Text, useInput } from 'ink';
 import { C } from '../contexts/TUIContext';
 import { Spinner } from '../components/Spinner';
 import { BlinkingCursor } from '../components/BlinkingCursor';
-import { initSiteNonInteractive } from '../../../lib/init';
-import { addRecentProject } from '../../../lib/recent';
-import { applyTheme } from '../../../lib/apply-theme';
-import { isEmptyDir } from '../../../lib/content';
+import { initSiteNonInteractive } from '../../lib/init';
+import { addRecentProject } from '../../lib/recent';
+import { applyTheme } from '../../lib/apply-theme';
+import { isEmptyDir } from '../../lib/content';
 
 const THEMES = [
   { label: 'Dracula', name: 'dracula', color: C.pink, emoji: '🌙' },

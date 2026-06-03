@@ -10,8 +10,8 @@ import { C } from './contexts/TUIContext';
 import { ConfirmBox } from './components/ConfirmBox';
 import { SelectableList } from './components/SelectableList';
 
-import { getRecentProjects, addRecentProject, isMemoriaProject, getProjectName } from '../../lib/recent';
-import { buildSite, bundleSite, startPreview } from '../../lib/build';
+import { getRecentProjects, addRecentProject, isMemoriaProject, getProjectName } from '../lib/recent';
+import { buildSite, bundleSite, startPreview } from '../lib/build';
 import { CreateWizard } from './views/CreateWizard';
 import { NewContentWizard } from './views/NewContentWizard';
 import { ThemePicker } from './views/ThemePicker';

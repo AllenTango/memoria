@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { C } from '../contexts/TUIContext';
-import { applyTheme } from '../../../lib/apply-theme';
+import { applyTheme } from '../../lib/apply-theme';
 
 const BUILT_IN_THEMES = [
   { name: 'dracula', emoji: '🌙', desc: 'Dracula 暗黑系' },
