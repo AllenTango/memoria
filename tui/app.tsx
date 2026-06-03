@@ -312,6 +312,12 @@ function App(): React.ReactElement {
         return;
       }
       setScreen('theme');
+    } else if (bare === 'new:blog' || bare === 'new:vlog' || bare === 'new:photo') {
+      if (!currentProject) {
+        setFeedback({ type: 'warn', msg: '⚠ 请先打开一个项目' });
+        return;
+      }
+      setScreen('newContent');
     } else {
       setFeedback({ type: 'err', msg: `✗ 未知命令: ${c}` });
     }
@@ -473,6 +479,74 @@ function App(): React.ReactElement {
           onClose={() => setShowPalette(false)}
         />
       </Box>
+    );
+  }
+
+  // ── ThemePicker 视图（统一 Layout）────────────────
+  if (screen === 'theme' && currentProject) {
+    return (
+      <Layout
+        siteName={getProjectName(currentProject)}
+        sitePath={currentProject}
+        serverRunning={serverRunning}
+        height={rows}
+      >
+        <>
+          {/* Left Sidebar — 主题选择引导 */}
+          <Box flexDirection="column" gap={1}>
+            <Text bold color={C.pink}>🎨 切换主题</Text>
+            <Text dimColor>选择内置主题应用到站点</Text>
+            <Box flexDirection="column" marginTop={1} gap={0}>
+              <Text color={C.muted}>① 选择主题</Text>
+              <Text color={C.muted}>② 确认应用</Text>
+              <Text color={C.muted}>③ 完成</Text>
+            </Box>
+            <Text dimColor marginTop={2}>Esc 返回</Text>
+          </Box>
+        </>
+
+        <>
+          {/* Right Detail — 主题选择器 */}
+          <ThemePicker
+            projectRoot={currentProject}
+            onClose={() => setScreen('main')}
+          />
+        </>
+      </Layout>
+    );
+  }
+
+  // ── NewContentWizard 视图（统一 Layout）───────────
+  if (screen === 'newContent' && currentProject) {
+    return (
+      <Layout
+        siteName={getProjectName(currentProject)}
+        sitePath={currentProject}
+        serverRunning={serverRunning}
+        height={rows}
+      >
+        <>
+          {/* Left Sidebar — 新建内容引导 */}
+          <Box flexDirection="column" gap={1}>
+            <Text bold color={C.green}>📝 新建内容</Text>
+            <Text dimColor>选择类型并输入标题即可创建</Text>
+            <Box flexDirection="column" marginTop={1} gap={0}>
+              <Text color={C.muted}>① 选择类型</Text>
+              <Text color={C.muted}>② 输入标题</Text>
+              <Text color={C.muted}>③ 确认创建</Text>
+            </Box>
+            <Text dimColor marginTop={2}>Esc 返回</Text>
+          </Box>
+        </>
+
+        <>
+          {/* Right Detail — 新建内容向导 */}
+          <NewContentWizard
+            projectRoot={currentProject}
+            onComplete={() => setScreen('main')}
+          />
+        </>
+      </Layout>
     );
   }
 
