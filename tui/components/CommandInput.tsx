@@ -63,6 +63,10 @@ export function CommandInput({ onCommand, visible }: CommandInputProps): React.R
     }
   }, [visible]);
 
+  // filtered 最多显示 6 条，选择在可见范围内循环（不超出屏幕）
+  const visibleCount = Math.min(filtered.length, 6);
+  const visibleIndex = selected % Math.max(visibleCount, 1);
+
   useInput((inp, key) => {
     if (!visible) return;
 
@@ -85,9 +89,9 @@ export function CommandInput({ onCommand, visible }: CommandInputProps): React.R
       });
       setShowHints(false);
     } else if (key.upArrow) {
-      if (showHints) setSelected(s => Math.max(0, s - 1));
+      if (showHints) setSelected(s => (s - 1 + filtered.length) % filtered.length);
     } else if (key.downArrow) {
-      if (showHints) setSelected(s => Math.min(filtered.length - 1, s + 1));
+      if (showHints) setSelected(s => (s + 1) % filtered.length);
     } else if (key.escape) {
       setInput('/');
       setShowHints(false);
@@ -121,20 +125,23 @@ export function CommandInput({ onCommand, visible }: CommandInputProps): React.R
         <Text color={C.muted} dimColor> · ↑↓选择 · Enter执行</Text>
       </Box>
 
-      {/* 匹配下拉 */}
+      {/* 匹配下拉 — 固定最多6条，selected在可见范围内循环 */}
       {showHints && filtered.length > 0 && (
         <Box flexDirection="column" marginTop={1} gap={0}>
-          {filtered.slice(0, 6).map((c, i) => (
-            <Box key={c.cmd} flexDirection="row" gap={1}>
-              <Text color={i === selected ? c.color : C.muted} wrap="truncate">
-                {i === selected ? '▶' : ' '}
-              </Text>
-              <Text color={i === selected ? c.color : C.muted} bold={i === selected} wrap="truncate">
-                {c.cmd}
-              </Text>
-              <Text color={C.muted} dimColor>— {c.desc}</Text>
-            </Box>
-          ))}
+          {filtered.slice(0, 6).map((c, i) => {
+            const isSelected = i === visibleIndex;
+            return (
+              <Box key={c.cmd} flexDirection="row" gap={1}>
+                <Text color={isSelected ? c.color : C.muted} wrap="truncate">
+                  {isSelected ? '▶' : ' '}
+                </Text>
+                <Text color={isSelected ? c.color : C.muted} bold={isSelected} wrap="truncate">
+                  {c.cmd}
+                </Text>
+                <Text color={C.muted} dimColor>— {c.desc}</Text>
+              </Box>
+            );
+          })}
         </Box>
       )}
 
