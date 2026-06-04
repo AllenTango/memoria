@@ -20,7 +20,7 @@ export function Layout({ children, siteName, sitePath, serverRunning, height}: L
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   return (
-    <Box flexDirection="column" flexGrow={1} flexShrink={0} height={height}>
+    <Box flexDirection="column" flexGrow={1} flexShrink={0} height={height} borderStyle="round" borderColor={C.pink}>
       {/* ── Header（固定顶部）──────────────────────────────── */}
       <Box flexShrink={0}
         borderStyle="round"
@@ -41,7 +41,7 @@ export function Layout({ children, siteName, sitePath, serverRunning, height}: L
       </Box>
 
       {/* ── Content（填满中间）────────────────────────────── */}
-      <Box flexDirection="column" flexGrow={1} flexShrink={0} marginTop={1}>
+      <Box flexDirection="column" flexGrow={1} flexShrink={0} marginTop={1} borderStyle="round" borderColor={C.muted}>
         {children}
       </Box>
 

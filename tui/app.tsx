@@ -14,7 +14,7 @@ import { type LogEntry } from './components/DetailPanel';
 import { getRecentProjects, addRecentProject, isMemoriaProject, getProjectName } from '../lib/recent';
 import { buildSite, bundleSite } from '../lib/build';
 import { startServer, stopServer, isServerRunning } from '../lib/server-manager';
-import { openInEditor } from '../lib/editor';
+import { openInEditor, openDir } from '../lib/editor';
 import {
   CreateWizard,
   NewContentWizard,
@@ -156,15 +156,6 @@ function App(): React.ReactElement {
     if (key.ctrl && input === 'c') { doExit(); return; }
 
     if (screen === 'main' && currentProject) {
-      // Dashboard 快捷键
-      if (input === 'p' || input === 'P') {
-        void handleStartServer();
-        return;
-      }
-      if (input === 's' || input === 'S') {
-        void handleStopServer();
-        return;
-      }
       if (input === 'x' || input === 'X') {
         doExit();
         return;
@@ -204,7 +195,7 @@ function App(): React.ReactElement {
     appendLog('info', '正在构建站点...');
 
     try {
-      await startServer(currentProject);
+      await startServer(currentProject, 3000, appendLog);
       setServerRunning(true);
       appendLog('success', '🌐 预览服务器已启动 http://localhost:3000');
       setFeedback({ type: 'ok', msg: '✓ 服务器已启动' });
@@ -238,29 +229,41 @@ function App(): React.ReactElement {
     setConfirmTarget(null);
 
     const tasks: Record<string, () => Promise<void>> = {
-      generate: showLogsForCommand('/generate', async () => {
-        appendLog('info', '开始构建站点...');
-        const result = buildSite({ rootDir: currentProject });
-        if (result.success) {
-          appendLog('success', `✓ 构建完成 (${result.stats?.blogs} blogs, ${result.stats?.vlogs} vlogs, ${result.stats?.photos} photos)`);
-          setFeedback({ type: 'ok', msg: `✓ 构建完成` });
-        } else {
-          result.errors.forEach(e => appendLog('error', e));
-          setFeedback({ type: 'err', msg: `✗ 构建失败` });
+          generate: showLogsForCommand('/generate', async () => {
+            appendLog('info', '开始构建站点...');
+            const result = buildSite({ rootDir: currentProject });
+            if (result.success) {
+              appendLog('success', `✓ 构建完成 (${result.stats?.blogs} blogs, ${result.stats?.vlogs} vlogs, ${result.stats?.photos} photos)`);
+              setFeedback({ type: 'ok', msg: `✓ 构建完成` });
+            } else {
+              result.errors.forEach(e => appendLog('error', e));
+              setFeedback({ type: 'err', msg: `✗ 构建失败` });
+            }
+          }),
+          bundle: showLogsForCommand('/bundle', async () => {
+            appendLog('info', '开始打包站点...');
+            const result = bundleSite({ rootDir: currentProject });
+            if (result.success) {
+              appendLog('success', '✓ 打包完成');
+              setFeedback({ type: 'ok', msg: '✓ 打包完成' });
+            } else {
+              result.errors.forEach(e => appendLog('error', e));
+              setFeedback({ type: 'err', msg: `✗ 打包失败` });
+            }
+          }),
+          server: async () => { await handleStartServer(); },
+          stop: async () => { await handleStopServer(); },
+          open: async () => {
+        if (!currentProject) return;
+        try {
+          await openDir(currentProject);
+          appendLog('success', `✓ 已在文件管理器中打开项目目录`);
+          setFeedback({ type: 'ok', msg: '✓ 已在文件管理器中打开' });
+        } catch (err) {
+          appendLog('error', err instanceof Error ? err.message : String(err));
+          setFeedback({ type: 'err', msg: `✗ 打开目录失败` });
         }
-      }),
-      bundle: showLogsForCommand('/bundle', async () => {
-        appendLog('info', '开始打包站点...');
-        const result = bundleSite({ rootDir: currentProject });
-        if (result.success) {
-          appendLog('success', '✓ 打包完成');
-          setFeedback({ type: 'ok', msg: '✓ 打包完成' });
-        } else {
-          result.errors.forEach(e => appendLog('error', e));
-          setFeedback({ type: 'err', msg: '✗ 打包失败' });
-        }
-      }),
-      server: async () => { await handleStartServer(); },
+      },
       deploy: async () => {
         setFeedback({ type: 'warn', msg: '⚠ deploy 功能开发中' });
       },
@@ -274,13 +277,12 @@ function App(): React.ReactElement {
     const c = input.trim();
     if (!c) return;
     const bare = c.replace(/^\/+/, '');
-    if (['generate', 'b', 'bundle', 'deploy'].includes(bare)) {
+    if (['generate', 'bundle', 'deploy', 'open', 'server', 'stop'].includes(bare)) {
       if (!currentProject) {
         setFeedback({ type: 'warn', msg: '⚠ 请先打开一个项目' });
         return;
       }
-      // b is alias for generate
-      void executeCmd(bare === 'b' ? 'generate' : bare);
+      void executeCmd(bare);
     } else if (bare === 'theme') {
       if (!currentProject) {
         setFeedback({ type: 'warn', msg: '⚠ 请先打开一个项目' });
@@ -406,13 +408,9 @@ function App(): React.ReactElement {
   return (
     <SiteDashboard
       currentProject={currentProject}
-      selectedFilePath={selectedFilePath}
-      fileMetadata={fileMetadata}
-      detailMode={detailMode}
       logs={logs}
       activeCommand={activeCommand}
       serverRunning={serverRunning}
-      onFileSelect={handleFileSelect}
       onCommand={handleCommand}
     />
   );

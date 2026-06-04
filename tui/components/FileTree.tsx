@@ -1,9 +1,9 @@
 /**
- * FileTree — 文件树组件，左栏资源管理
- * 支持展开/折叠、键盘导航、Enter 唤起编辑器
+ * FileTree — 文件树组件，模拟 Linux tree 命令的只读展示
+ * 支持上下键/鼠标滚轮滚动
  */
-import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Text } from 'ink';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Box, Text, useInput } from 'ink';
 import * as path from 'path';
 import * as fs from 'fs';
 import { C } from '../contexts/TUIContext';
@@ -15,205 +15,112 @@ export interface FileTreeNode {
   children?: FileTreeNode[];
 }
 
+interface FlatNode {
+  node: FileTreeNode;
+  depth: number;
+  isLast: boolean[];
+}
+
 // ── 数据加载 ──────────────────────────────────────────────
 
-function scanDir(dir: string): FileTreeNode[] {
+function scanDir(dir: string, maxDepth: number = 2): FileTreeNode[] {
   if (!fs.existsSync(dir)) return [];
-
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   const result: FileTreeNode[] = [];
-
   for (const entry of entries) {
     if (entry.name.startsWith('.')) continue;
+    if (entry.name === 'node_modules' || entry.name === 'package-lock.json' || entry.name === 'dist') continue;
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      result.push({
-        name: entry.name,
-        path: fullPath,
-        type: 'directory',
-        children: scanDir(fullPath),
-      });
-    } else if (entry.name.endsWith('.md')) {
-      result.push({
-        name: entry.name,
-        path: fullPath,
-        type: 'file',
-      });
+      const children = maxDepth > 0 ? scanDir(fullPath, maxDepth - 1) : [];
+      result.push({ name: entry.name, path: fullPath, type: 'directory', children });
+    } else {
+      result.push({ name: entry.name, path: fullPath, type: 'file' });
     }
   }
-
-  // 排序：目录在前，然后按名称
   return result.sort((a, b) => {
     if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
 }
 
-// ── 文件树节点行 ──────────────────────────────────────────
-
-interface TreeNodeRowProps {
-  node: FileTreeNode;
-  depth: number;
-  expanded: boolean;
-  selected: boolean;
-  onToggle: (path: string) => void;
-  onSelect: (path: string) => void;
-}
-
-function TreeNodeRow({ node, depth, expanded, selected, onToggle, onSelect }: TreeNodeRowProps): React.ReactElement {
-  const indent = '  '.repeat(depth);
-  const isDir = node.type === 'directory';
-  const icon = isDir ? (expanded ? '📂' : '📁') : getFileIcon(node.name);
-  const nameColor = selected ? C.green : C.fg;
-  const baseColor = selected ? C.green : C.muted;
-
-  return (
-    <Box flexDirection="row">
-      <Text
-        color={baseColor}
-        onClick={() => {
-          if (isDir) onToggle(node.path);
-          else onSelect(node.path);
-        }}
-      >
-        {indent}
-        {selected ? '▶ ' : '  '}
-        {icon}
-      </Text>
-      <Text
-        color={nameColor}
-        bold={selected}
-        wrap="truncate"
-        onClick={() => {
-          if (isDir) onToggle(node.path);
-          else onSelect(node.path);
-        }}
-      >
-        {node.name}
-      </Text>
-      {isDir && node.children && (
-        <Text color={C.muted}> ({node.children.length})</Text>
-      )}
-    </Box>
-  );
+function flattenTree(nodes: FileTreeNode[], depth = 0, isLast: boolean[] = []): FlatNode[] {
+  const result: FlatNode[] = [];
+  nodes.forEach((node, i) => {
+    const nodeIsLast = i === nodes.length - 1;
+    result.push({ node, depth, isLast: [...isLast, nodeIsLast] });
+    if (node.type === 'directory' && node.children) {
+      result.push(...flattenTree(node.children, depth + 1, [...isLast, nodeIsLast]));
+    }
+  });
+  return result;
 }
 
 function getFileIcon(filename: string): string {
   if (filename.endsWith('.md')) return '📄';
+  if (filename.endsWith('.css')) return '🎨';
+  if (filename.endsWith('.html')) return '🌐';
+  if (filename.endsWith('.json')) return '📋';
   return '📄';
 }
 
 // ── 主组件 ──────────────────────────────────────────────
 
-interface FileTreeProps {
-  rootDir: string;
-  selectedPath: string | null;
-  onSelectFile: (path: string) => void;
-}
+const TREE_ROWS = 20;
 
-export function FileTree({ rootDir, selectedPath, onSelectFile }: FileTreeProps): React.ReactElement {
-  // 资源目录：blogs、vlogs、photos、public
-  const resourceDirs = ['blogs', 'vlogs', 'photos', 'public'];
-
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
+export function FileTree({ rootDir }: { rootDir: string }): React.ReactElement {
   const [treeData, setTreeData] = useState<FileTreeNode[]>([]);
-  const [selectedNodePath, setSelectedNodePath] = useState<string | null>(null);
-  const [focusedDepth, setFocusedDepth] = useState(0); // 0=root level
+  const [scrollOffset, setScrollOffset] = useState(0);
 
-  // 初始化加载
   useEffect(() => {
     if (!rootDir) return;
-
-    const children: FileTreeNode[] = resourceDirs
-      .map(name => {
-        const fullPath = path.join(rootDir, 'content', name);
-        if (!fs.existsSync(fullPath)) {
-          return { name, path: fullPath, type: 'directory' as const, children: [] };
-        }
-        return {
-          name,
-          path: fullPath,
-          type: 'directory' as const,
-          children: scanDir(fullPath),
-        };
-      });
-
-    // 添加 public 目录
-    const publicPath = path.join(rootDir, 'public');
-    if (fs.existsSync(publicPath)) {
-      const publicFiles = fs.readdirSync(publicPath, { withFileTypes: true })
-        .filter(e => !e.name.startsWith('.'))
-        .map(e => ({
-          name: e.name,
-          path: path.join(publicPath, e.name),
-          type: 'file' as const,
-        }));
-      children.push({ name: 'public', path: publicPath, type: 'directory', children: publicFiles });
-    }
-
-    setTreeData(children);
-
-    // 默认展开前三个
-    const initialExpanded = new Set(
-      children.slice(0, 3).map(n => n.path)
-    );
-    setExpandedPaths(initialExpanded);
+    setTreeData(scanDir(rootDir, 2));
+    setScrollOffset(0);
   }, [rootDir]);
 
-  const toggleExpand = useCallback((path: string) => {
-    setExpandedPaths(prev => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
-  }, []);
+  const flatNodes = useMemo(() => flattenTree(treeData), [treeData]);
+  const visibleCount = TREE_ROWS - 4; // 留2行指示器
 
-  const handleSelect = useCallback((path: string, node: FileTreeNode) => {
-    setSelectedNodePath(path);
-    if (node.type === 'file') {
-      onSelectFile(path);
-    }
-  }, [onSelectFile]);
+  useInput((input, key) => {
+    // j/k 滚动（vim 风格，与全局快捷键不冲突）
+    if (input === 'j') setScrollOffset(prev => Math.min(flatNodes.length - visibleCount, prev + 1));
+    else if (input === 'k') setScrollOffset(prev => Math.max(0, prev - 1));
+    else if (input === 'J') setScrollOffset(Math.max(0, flatNodes.length - visibleCount));
+    else if (input === 'K') setScrollOffset(0);
+    // PageUp/PageDown 也可以用
+    else if (key.pageDown) setScrollOffset(prev => Math.min(flatNodes.length - visibleCount, prev + 10));
+    else if (key.pageUp) setScrollOffset(prev => Math.max(0, prev - 10));
+  });
 
-  // 渲染树
-  function renderTree(nodes: FileTreeNode[], depth: number): React.ReactNode {
-    return nodes.map(node => {
-      const isExpanded = expandedPaths.has(node.path);
-      const isSelected = selectedNodePath === node.path;
+  if (!rootDir) return <Text color={C.muted}>未选择站点</Text>;
+  if (treeData.length === 0) return <Text color={C.muted}>暂无资源</Text>;
 
-      return (
-        <React.Fragment key={node.path}>
-          <TreeNodeRow
-            node={node}
-            depth={depth}
-            expanded={isExpanded}
-            selected={isSelected}
-            onToggle={toggleExpand}
-            onSelect={(p) => handleSelect(p, node)}
-          />
-          {node.type === 'directory' && isExpanded && node.children && (
-            renderTree(node.children, depth + 1)
-          )}
-        </React.Fragment>
-      );
-    });
-  }
-
-  if (!rootDir) {
-    return <Text color={C.muted}>未选择站点</Text>;
-  }
+  const visibleNodes = flatNodes.slice(scrollOffset, scrollOffset + visibleCount);
+  const hasMoreAbove = scrollOffset > 0;
+  const hasMoreBelow = scrollOffset + visibleCount < flatNodes.length;
 
   return (
-    <Box flexDirection="column" flexGrow={1}>
-      <Text dimColor marginBottom={1}>按 Enter 编辑文件</Text>
-      <Box flexDirection="column" flexGrow={1} overflow="hidden">
-        {treeData.length === 0 ? (
-          <Text color={C.muted}>暂无资源</Text>
-        ) : (
-          renderTree(treeData, 0)
-        )}
+    <Box flexDirection="column" flexShrink={0} height={TREE_ROWS}>
+      {hasMoreAbove && (
+        <Text dimColor>▲ k上方还有 {scrollOffset} 项</Text>
+      )}
+      <Box flexDirection="column" flexGrow={1}>
+        {visibleNodes.map((flat, i) => {
+          const { node, depth, isLast } = flat;
+          const isDir = node.type === 'directory';
+          const indent = '  '.repeat(depth);
+          const prefix = depth > 0 ? (isLast[isLast.length - 1] ? '└── ' : '├── ') : '';
+          const icon = isDir ? '📂' : getFileIcon(node.name);
+          const childCount = isDir && node.children && node.children.length > 0 ? ` (${node.children.length})` : '';
+          const name = `${indent}${prefix}${icon} ${node.name}${childCount}`;
+          const maxW = 38;
+          const truncated = name.length > maxW ? name.substring(0, maxW - 3) + '...' : name;
+          return <Text key={i} color={C.muted} wrap="truncate">{truncated}</Text>;
+        })}
       </Box>
+      {hasMoreBelow && (
+        <Text dimColor>▼ j 下方还有 {flatNodes.length - scrollOffset - visibleCount} 项</Text>
+      )}
     </Box>
   );
 }

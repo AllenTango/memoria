@@ -23,25 +23,17 @@ interface FileMetadata {
 
 interface Props {
   currentProject: string;
-  selectedFilePath: string | null;
-  fileMetadata: FileMetadata | null;
-  detailMode: 'metadata' | 'log';
   logs: LogEntry[];
   activeCommand: string | null;
   serverRunning: boolean;
-  onFileSelect: (filePath: string) => void;
   onCommand: (cmd: string) => void;
 }
 
 export function SiteDashboard({
   currentProject,
-  selectedFilePath,
-  fileMetadata,
-  detailMode,
   logs,
   activeCommand,
   serverRunning,
-  onFileSelect,
   onCommand,
 }: Props): React.ReactElement {
   const { rows } = useWindowSize();
@@ -51,8 +43,8 @@ export function SiteDashboard({
       sitePath={currentProject}
       serverRunning={serverRunning}
       height={rows}>
-      <Box flexDirection="row" justifyContent="center" alignItems="center" flexGrow={1}>
-        {/* Left Sidebar — 30% */}
+      <Box flexDirection="row" justifyContent="center" alignItems="flex-start" flexGrow={1}>
+        {/* Left Sidebar — 资源树 */}
         <Box
           width={30}
           minWidth={24}
@@ -62,23 +54,21 @@ export function SiteDashboard({
           paddingX={1}
           flexDirection="column"
           marginRight={1}
+          flexGrow={0}
+          flexShrink={0}
         >
-          <FileTree
-            rootDir={currentProject}
-            selectedPath={selectedFilePath}
-            onSelectFile={onFileSelect}
-          />
+          <FileTree rootDir={currentProject} />
         </Box>
         <Box
           flexGrow={1}
+          height={20}
+          flexShrink={0}
           borderStyle="round"
           borderColor={C.orange}
           paddingX={1}
           flexDirection="column"
         >
           <DetailPanel
-            mode={detailMode}
-            metadata={fileMetadata || undefined}
             logs={logs}
             activeCommand={activeCommand || undefined}
           />

@@ -69,3 +69,32 @@ export function getEditorDisplayName(): string {
   const name = path.basename(editor.split(/\s+/)[0]);
   return name;
 }
+
+/**
+ * 用系统默认应用打开目录
+ * @param dirPath 绝对路径
+ */
+export function openDir(dirPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!fs.existsSync(dirPath)) {
+      reject(new Error(`目录不存在: ${dirPath}`));
+      return;
+    }
+
+    // 优先用 xdg-open (Linux)，没有则尝试 open (macOS)
+    const opener = process.platform === 'darwin' ? 'open' : 'xdg-open';
+    const child = spawn(opener, [dirPath], {
+      stdio: 'ignore',
+      detached: true,
+    });
+
+    child.on('error', (err) => {
+      reject(new Error(`无法打开目录: ${err.message}`));
+    });
+
+    child.on('close', (code) => {
+      // detached child 成功启动即可，不等待用户退出
+      resolve();
+    });
+  });
+}

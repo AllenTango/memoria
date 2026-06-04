@@ -42,6 +42,7 @@ export function SiteSelector({ onMenuConfirm, onRecentSelect }: Props): React.Re
           paddingX={1}
           flexDirection="column"
           marginRight={1}
+          flexGrow={1}
         >
           {/* 主菜单列表 */}
           <SelectableList
@@ -64,23 +65,22 @@ export function SiteSelector({ onMenuConfirm, onRecentSelect }: Props): React.Re
           flexDirection="column"
         >
           {/* 最近项目 */}
-          {recents.length > 0 && (
-            <Box flexDirection="column" marginTop={2}>
-              <Text dimColor bold>最近项目</Text>
-              <Box flexDirection="column" marginTop={0} gap={0}>
-                {recents.slice(0, 5).map((r) => (
-                  <Text
-                    key={r.root}
-                    color={C.cyan}
-                    wrap="truncate"
-                    onClick={() => onRecentSelect(r.root)}
-                  >
-                    📂 {r.name}
-                  </Text>
-                ))}
-              </Box>
+
+          <Box flexDirection="column">
+            <Text dimColor bold>最近项目</Text>
+            <Box flexDirection="column" marginTop={0} gap={0}>
+              {recents.slice(0, 5).map((r) => (
+                <Text
+                  key={r.root}
+                  color={C.cyan}
+                  wrap="truncate"
+                  onClick={() => onRecentSelect(r.root)}
+                >
+                  📂 {r.name}
+                </Text>
+              ))}
             </Box>
-          )}
+          </Box>
         </Box>
       </Box>
     </Layout>

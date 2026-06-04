@@ -15,8 +15,6 @@ export function StatusBar({ serverRunning, shortcuts }: StatusBarProps): React.R
   const serverLabel = serverRunning ? 'RUNNING' : 'STOPPED';
 
   const defaultShortcuts: [string, string][] = [
-    ['p', '预览'],
-    ['s', '停止'],
     ['/', '指令'],
     ['↑↓', '选择'],
     ['Enter', '确认'],

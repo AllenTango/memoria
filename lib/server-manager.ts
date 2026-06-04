@@ -35,7 +35,11 @@ export function isServerRunning(): boolean {
   return httpServer !== null;
 }
 
-export function startServer(rootDir: string, port = 3000): Promise<void> {
+export function startServer(
+  rootDir: string,
+  port = 3000,
+  onLog?: (level: LogEntry['level'], message: string) => void
+): Promise<void> {
   return new Promise(async (resolve, reject) => {
     if (httpServer) {
       resolve();
@@ -43,17 +47,21 @@ export function startServer(rootDir: string, port = 3000): Promise<void> {
     }
 
     // 先构建，确保 dist/ 最新
+    onLog?.('info', '正在构建站点...');
     const { buildSite } = await import('./build.js');
     const result = buildSite({ rootDir });
     if (!result.success) {
+      onLog?.('error', '构建失败: ' + result.errors.join(', '));
       reject(new Error('构建失败: ' + result.errors.join(', ')));
       return;
     }
+    onLog?.('info', '构建完成，正在启动服务器...');
 
     const outputDir = result.outputDir;
 
     const server = createServer((req, res) => {
-      let url = req.url === '/' ? '/index.html' : req.url!;
+      let url = decodeURIComponent(req.url === '/' ? '/index.html' : req.url!);
+      if (url.endsWith('/')) url = url.slice(0, -1);
       let filePath = path.join(outputDir, url);
 
       // 防止目录遍历
@@ -61,7 +69,10 @@ export function startServer(rootDir: string, port = 3000): Promise<void> {
         filePath = path.join(outputDir, 'index.html');
       }
 
-      if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+      // 目录 → 找 index.html
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+        filePath = path.join(filePath, 'index.html');
+      } else if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
         filePath = path.join(outputDir, 'index.html');
       }
 

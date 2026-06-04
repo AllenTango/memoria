@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
 import { findPkgRoot } from './pkg-root.js';
-import { compileAllContent } from '../core/compiler.js';
+import { compileAllContent, compileFile } from '../core/compiler.js';
 import { renderIndex, renderBlogs, renderVlogs, renderPhotos, renderAbout, renderDetail } from '../core/renderer.js';
 import { ensureDir, writeFile, slugify } from '../core/utils.js';
 
@@ -97,6 +97,18 @@ export function buildSite(opts: BuildOptions): BuildResult {
 
   const { blogs, vlogs, photos, all } = compileAllContent(contentDir);
 
+  // 编译 about.md
+  const aboutPath = path.join(contentDir, 'about.md');
+  let aboutData: { html: string } | null = null;
+  if (fs.existsSync(aboutPath)) {
+    try {
+      const compiled = compileFile(aboutPath, 'blog');
+      aboutData = { html: compiled.content };
+    } catch (e) {
+      // about.md 解析失败不影响构建
+    }
+  }
+
   const outputDir = path.join(rootDir, 'dist');
   ensureDir(outputDir);
 
@@ -109,7 +121,7 @@ export function buildSite(opts: BuildOptions): BuildResult {
   writeFile(path.join(outputDir, 'blogs.html'), renderBlogs({ blogs, siteConfig }, template));
   writeFile(path.join(outputDir, 'vlogs.html'), renderVlogs({ vlogs, siteConfig }, template));
   writeFile(path.join(outputDir, 'photos.html'), renderPhotos({ photos, siteConfig }, template));
-  writeFile(path.join(outputDir, 'about.html'), renderAbout({ aboutData: null, siteConfig }, template));
+  writeFile(path.join(outputDir, 'about.html'), renderAbout({ aboutData, siteConfig }, template));
 
   ensureDir(path.join(outputDir, 'blog'));
   ensureDir(path.join(outputDir, 'vlog'));
@@ -154,8 +166,12 @@ export async function startPreview(opts: BuildOptions): Promise<never> {
   };
 
   const server = createServer((req, res) => {
-    let filePath = path.join(outputDir, req.url === '/' ? 'index.html' : req.url!);
-    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+    let url = decodeURIComponent(req.url === '/' ? '/index.html' : req.url!);
+    if (url.endsWith('/')) url = url.slice(0, -1);
+    let filePath = path.join(outputDir, url);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+      filePath = path.join(filePath, 'index.html');
+    } else if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
       filePath = path.join(outputDir, 'index.html');
     }
     const ext = path.extname(filePath);

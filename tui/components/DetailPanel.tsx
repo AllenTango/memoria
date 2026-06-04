@@ -13,79 +13,6 @@ export interface LogEntry {
   message: string;
 }
 
-interface MetadataProps {
-  type: 'directory' | 'blog' | 'vlog' | 'photo';
-  name: string;
-  path: string;
-  date?: string;
-  tags?: string[];
-  description?: string;
-  childCount?: number;
-}
-
-interface DetailPanelProps {
-  mode: 'metadata' | 'log';
-  metadata?: MetadataProps;
-  logs?: LogEntry[];
-  activeCommand?: string;
-}
-
-// ── 元数据模式 ────────────────────────────────────────────
-
-function MetadataView({ metadata }: { metadata: MetadataProps }): React.ReactElement {
-  const typeLabels = { directory: '📁 目录', blog: '📝 文章', vlog: '🎬 影像', photo: '📷 相册' };
-
-  return (
-    <Box flexDirection="column" gap={1} paddingX={1}>
-      <Box flexDirection="row" gap={1}>
-        <Text color={C.cyan} bold>类型:</Text>
-        <Text color={C.fg}>{typeLabels[metadata.type] || metadata.type}</Text>
-      </Box>
-
-      <Box flexDirection="row" gap={1}>
-        <Text color={C.cyan} bold>名称:</Text>
-        <Text color={C.fg} bold wrap="truncate">{metadata.name}</Text>
-      </Box>
-
-      {metadata.date && (
-        <Box flexDirection="row" gap={1}>
-          <Text color={C.cyan} bold>日期:</Text>
-          <Text color={C.fg}>{metadata.date}</Text>
-        </Box>
-      )}
-
-      {metadata.childCount !== undefined && (
-        <Box flexDirection="row" gap={1}>
-          <Text color={C.cyan} bold>内容:</Text>
-          <Text color={C.fg}>{metadata.childCount} 个文件</Text>
-        </Box>
-      )}
-
-      {metadata.tags && metadata.tags.length > 0 && (
-        <Box flexDirection="column" gap={0}>
-          <Text color={C.cyan} bold>标签:</Text>
-          <Box flexDirection="row" gap={1} flexWrap="wrap">
-            {metadata.tags.map((tag, i) => (
-              <Text key={i} color={C.purple}>({tag})</Text>
-            ))}
-          </Box>
-        </Box>
-      )}
-
-      {metadata.description && (
-        <Box flexDirection="column" gap={0}>
-          <Text color={C.cyan} bold>描述:</Text>
-          <Text color={C.fg} wrap="truncate">{metadata.description}</Text>
-        </Box>
-      )}
-
-      <Box flexDirection="column" gap={0} marginTop={1}>
-        <Text color={C.cyan} bold>路径:</Text>
-        <Text color={C.muted} wrap="truncate">{metadata.path}</Text>
-      </Box>
-    </Box>
-  );
-}
 
 // ── 日志模式 ─────────────────────────────────────────────
 
@@ -150,19 +77,6 @@ export function LogView({ logs, activeCommand }: { logs: LogEntry[]; activeComma
   );
 }
 
-export function DetailPanel({ mode, metadata, logs = [], activeCommand }: DetailPanelProps): React.ReactElement {
-  if (mode === 'log') {
-    return <LogView logs={logs} activeCommand={activeCommand} />;
-  }
-
-  if (mode === 'metadata' && metadata) {
-    return <MetadataView metadata={metadata} />;
-  }
-
-  return (
-    <Box flexDirection="column" flexGrow={1} justifyContent="center" alignItems="center">
-      <Text color={C.muted}>选中文件查看详情</Text>
-      <Text color={C.muted} dimColor>或执行指令查看日志</Text>
-    </Box>
-  );
+export function DetailPanel({ logs = [], activeCommand }: { logs: LogEntry[]; activeCommand?: string }): React.ReactElement {
+  return <LogView logs={logs} activeCommand={activeCommand} />;
 }

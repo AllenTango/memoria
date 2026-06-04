@@ -114,7 +114,6 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
         <Box flexDirection="column" justifyContent="center" alignItems="center" flexGrow={1}>
           <Box flexDirection="column" alignItems="center" gap={1}>
             <Text bold color={C.green}>新建站点</Text>
-            <Text dimColor>输入站点名称后按 Enter 确认</Text>
           </Box>
 
           <Box marginTop={2} flexDirection="column" alignItems="center" gap={1} width={40}>
@@ -135,7 +134,7 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
     <Layout siteName="新建站点" sitePath="" serverRunning={false} height={rows}>
       <Box flexDirection="column" justifyContent="center" alignItems="center" flexGrow={1}>
         <Box marginBottom={1}>
-          <Text bold color={C.green}>🆕 新建站点</Text>
+          <Text bold color={C.green}>新建站点</Text>
         </Box>
         <Box flexDirection="column" flexGrow={1} overflow="hidden">
           {logs.length > 0 ? (

@@ -272,8 +272,8 @@ export function renderPhotos({ photos, siteConfig }: { photos: CompiledItem[]; s
   return renderTimelinePage(photoItems, '相册', 'photo', template);
 }
 
-export function renderAbout({ aboutData, siteConfig }: { aboutData: string | null; siteConfig: { name?: string; icon?: string } }, template: string): string {
-  const content = `<div class="about-body">${aboutData || '<p style="color:var(--color-text-muted);">暂无内容</p>'}</div>`;
+export function renderAbout({ aboutData, siteConfig }: { aboutData: { html: string } | null; siteConfig: { name?: string; icon?: string } }, template: string): string {
+  const content = `<div class="about-body">${aboutData?.html || '<p style="color:var(--color-text-muted);">暂无内容</p>'}</div>`;
   return applyTemplate(template, { title: '关于 — Memoria', page: 'about', content });
 }
 
