@@ -202,7 +202,7 @@
 
 ## 5. 核心数据结构
 
-### SiteConfig（全局配置 ~/,memoria/config.json）
+### SiteConfig（全局配置 ~/.memoria/config.json）
 
 ```typescript
 interface SiteConfig {
