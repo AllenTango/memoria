@@ -439,30 +439,10 @@ function App(): React.ReactElement {
     );
   }
 
-  // ── Create Wizard 视图（统一 Layout）─────────────
+  // ── Create Wizard 视图（独立全屏，不使用 Layout）─────────────
   if (!currentProject && screen === 'create') {
     return (
-      <Layout siteName="新建站点" sitePath={undefined} serverRunning={serverRunning} height={rows} showCommandInput={false}>
-        <>
-          {/* Left Sidebar — 创建引导 */}
-          <Box flexDirection="column" gap={1}>
-            <Text bold color={C.green}>🆕 新建站点</Text>
-            <Text dimColor>填写名称和路径即可创建新站点</Text>
-            <Box flexDirection="column" marginTop={1} gap={0}>
-              <Text color={C.muted}>① 输入名称</Text>
-              <Text color={C.muted}>② 确认路径</Text>
-              <Text color={C.muted}>③ 选择主题</Text>
-              <Text color={C.muted}>④ 创建完成</Text>
-            </Box>
-            <Text dimColor marginTop={2}>Esc 返回</Text>
-          </Box>
-        </>
-
-        <>
-          {/* Right Detail — 创建向导 */}
-          <CreateWizard onComplete={(p) => { if (p) openProject(p); setScreen('main'); }} />
-        </>
-      </Layout>
+      <CreateWizard onComplete={(p) => { if (p) openProject(p); setScreen('main'); }} />
     );
   }
 
