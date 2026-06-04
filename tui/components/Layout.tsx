@@ -1,5 +1,6 @@
 /**
- * Layout — 四区布局：Header + Sidebar(30%) + Detail(70%) + StatusBar + CommandInput
+ * Layout — 通用三区布局：Header + Content + Footer
+ * Content 区域由具体组件自行决定布局（可以是无侧栏居中，也可以是 Sidebar+Detail）
  */
 import React from 'react';
 import { Box, Text } from 'ink';
@@ -8,7 +9,7 @@ import { StatusBar } from './StatusBar';
 import { CommandInput } from './CommandInput';
 
 interface LayoutProps {
-  children: [React.ReactNode, React.ReactNode]; // [Sidebar, Detail]
+  children: React.ReactNode; // 主体内容，由具体视图组件决定布局
   siteName?: string;
   sitePath?: string;
   serverRunning: boolean;
@@ -22,9 +23,9 @@ export function Layout({ children, siteName, sitePath, serverRunning, height, sh
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   return (
-    <Box flexDirection="column" flexGrow={1} height={height}>
-      {/* ── Header ──────────────────────────────────────── */}
-      <Box
+    <Box flexDirection="column" flexGrow={1} flexShrink={0} height={height}>
+      {/* ── Header（固定顶部）──────────────────────────────── */}
+      <Box flexShrink={0}
         borderStyle="round"
         borderColor={C.purple}
         paddingX={1}
@@ -42,42 +43,13 @@ export function Layout({ children, siteName, sitePath, serverRunning, height, sh
         <Text dimColor>{dateStr}</Text>
       </Box>
 
-      {/* ── Main Body ────────────────────────────────────── */}
-      <Box flexDirection="row" flexGrow={1} marginTop={1}>
-        {/* Left Sidebar — 30% */}
-        <Box
-          width={30}
-          minWidth={24}
-          maxWidth={40}
-          borderStyle="round"
-          borderColor={C.cyan}
-          paddingX={1}
-          flexDirection="column"
-          marginRight={1}
-        >
-          <Text bold color={C.cyan}>📁 资源</Text>
-          <Box flexDirection="column" flexGrow={1} marginTop={1}>
-            {children[0]}
-          </Box>
-        </Box>
-
-        {/* Right Detail/Log — 70% */}
-        <Box
-          flexGrow={1}
-          borderStyle="round"
-          borderColor={C.orange}
-          paddingX={1}
-          flexDirection="column"
-        >
-          <Text bold color={C.orange}>📋 详情</Text>
-          <Box flexDirection="column" flexGrow={1} marginTop={1}>
-            {children[1]}
-          </Box>
-        </Box>
+      {/* ── Content（填满中间）────────────────────────────── */}
+      <Box flexDirection="column" flexGrow={1} flexShrink={0} marginTop={1}>
+        {children}
       </Box>
 
-      {/* ── StatusBar + CommandInput ─────────────────────────── */}
-      <Box marginTop={1} flexDirection="column" gap={1}>
+      {/* ── Footer（固定底部）──────────────────────────────── */}
+      <Box flexShrink={0} flexDirection="column" gap={1} marginTop={1}>
         <StatusBar serverRunning={serverRunning} />
         {showCommandInput && onCommand && (
           <CommandInput visible={showCommandInput} onCommand={onCommand} />

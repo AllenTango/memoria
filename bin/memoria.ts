@@ -15,20 +15,6 @@ async function main() {
     ? path.resolve(path.dirname(path.dirname(SELF_PATH)), 'lib', 'node_modules', 'memoria')
     : null;
 
-  // 工具函数
-  function isSiteDir(dir: string): boolean {
-    return fs.existsSync(path.join(dir, 'content')) && fs.existsSync(path.join(dir, '_config.yml'));
-  }
-
-  function findSiteDir(cwd: string): string | null {
-    let dir = cwd;
-    while (dir !== path.parse(dir).root) {
-      if (isSiteDir(dir)) return dir;
-      dir = path.dirname(dir);
-    }
-    return null;
-  }
-
   // 参数解析
   const args = process.argv.slice(2);
   const firstArg = args[0];

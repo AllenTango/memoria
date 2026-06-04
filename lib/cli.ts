@@ -3,7 +3,6 @@
  * CLI 命令处理层 — 调用 lib/ 各模块执行操作
  */
 import { spawn } from 'child_process';
-import { createContext, buildSite } from './build.js';
 import { createContent, type ContentType } from './content.js';
 import { isMemoriaProject } from './recent.js';
 
