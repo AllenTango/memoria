@@ -2,7 +2,7 @@
  * CommandInput — 固定命令输入框，常驻 StatusBar 上方
  * 类似 opencode 底部命令条：预填 ⌘ > /，支持 fuzzy 搜索下拉
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { C } from '../contexts/TUIContext';
 import { BlinkingCursor } from './BlinkingCursor';
@@ -14,17 +14,11 @@ interface CommandItem {
 }
 
 const ALL_COMMANDS: CommandItem[] = [
-  { cmd: '/create',   desc: '新建站点',        color: C.green },
-  { cmd: '/open',     desc: '打开项目',          color: C.cyan },
-  { cmd: '/generate', desc: '构建站点 (/b)',     color: C.orange },
-  { cmd: '/bundle',   desc: '构建 + 打包',       color: C.yellow },
-  { cmd: '/server',   desc: '本地预览',          color: C.purple },
-  { cmd: '/deploy',   desc: '部署站点',          color: C.green },
-  { cmd: '/new:blog', desc: '新建文章',          color: C.green },
-  { cmd: '/new:vlog', desc: '新建视频',          color: C.cyan },
-  { cmd: '/new:photo',desc: '新建相册',          color: C.pink },
-  { cmd: '/theme',    desc: '切换主题',          color: C.orange },
-  { cmd: '/exit',     desc: '退出',              color: C.red },
+  { cmd: '/generate', desc: '构建站点 (/b)', color: C.orange },
+  { cmd: '/bundle', desc: '构建 + 打包', color: C.yellow },
+  { cmd: '/deploy', desc: '部署站点', color: C.green },
+  { cmd: '/new', desc: '新建 随笔/影像/相册', color: C.green },
+  { cmd: '/theme', desc: '切换主题', color: C.orange },
 ];
 
 function fuzzyMatch(cmd: string, input: string): boolean {
@@ -40,10 +34,9 @@ function fuzzyMatch(cmd: string, input: string): boolean {
 
 interface CommandInputProps {
   onCommand: (cmd: string) => void;
-  visible: boolean;   // 是否显示输入框
 }
 
-export function CommandInput({ onCommand, visible }: CommandInputProps): React.ReactElement {
+export function CommandInput({ onCommand }: CommandInputProps): React.ReactElement {
   const [input, setInput] = useState('/');
   const [selected, setSelected] = useState(0);
   const [showHints, setShowHints] = useState(false);
@@ -55,20 +48,12 @@ export function CommandInput({ onCommand, visible }: CommandInputProps): React.R
   // 重置选择idx当过滤结果变化
   useEffect(() => { setSelected(0); }, [filtered]);
 
-  // 外部隐藏时清空
-  useEffect(() => {
-    if (!visible) {
-      setInput('/');
-      setShowHints(false);
-    }
-  }, [visible]);
 
   // filtered 最多显示 6 条，选择在可见范围内循环（不超出屏幕）
   const visibleCount = Math.min(filtered.length, 6);
   const visibleIndex = selected % Math.max(visibleCount, 1);
 
   useInput((inp, key) => {
-    if (!visible) return;
 
     if (key.return) {
       const trimmed = input.trim();
@@ -105,8 +90,6 @@ export function CommandInput({ onCommand, visible }: CommandInputProps): React.R
       setShowHints(true);
     }
   });
-
-  if (!visible) return <Box />;
 
   return (
     <Box

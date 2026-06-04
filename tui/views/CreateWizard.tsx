@@ -4,12 +4,13 @@
  * Step 1: 初始化日志（成功→引导进入，失败→允许重试）
  */
 import React, { useState } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text, useInput, useWindowSize } from 'ink';
 import * as path from 'path';
 import * as fs from 'fs';
 import { C } from '../contexts/TUIContext';
-import { LogView, LogEntry } from '../components/DetailPanel';
-import { BlinkingCursor } from '../components/BlinkingCursor';
+import { Layout } from '../components/Layout';
+import { LogView, type LogEntry } from '../components/DetailPanel';
+import { BlinkingCursor } from '../components';
 import { initSiteNonInteractive } from '../../lib/init';
 import { addRecentProject } from '../../lib/recent';
 import { applyTheme } from '../../lib/apply-theme';
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function CreateWizard({ onComplete }: Props): React.ReactElement {
+  const { rows } = useWindowSize();
   const [step, setStep] = useState<0 | 1>(0);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
@@ -49,10 +51,10 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
     if (step !== 1) return;
 
     if (result) {
-      // 成功：Enter 进入站点，x 退出
+      // 成功：Enter 进入站点，Esc 返回
       if (key.return) {
         onComplete(result.path);
-      } else if (input === 'x' || input === 'X') {
+      } else if (key.escape) {
         onComplete(); // 不传路径，回到主菜单（间接实现退出）
       }
     } else if (failed && key.escape) {
@@ -108,48 +110,52 @@ export function CreateWizard({ onComplete }: Props): React.ReactElement {
   // ── Step 0: 输入名称 ─────────────────────────────────
   if (step === 0) {
     return (
-      <Box flexDirection="column" justifyContent="center" alignItems="center" flexGrow={1}>
-        <Box flexDirection="column" alignItems="center" gap={1}>
-          <Text bold color={C.green}>新建站点</Text>
-          <Text dimColor>输入站点名称后按 Enter 确认</Text>
-        </Box>
-
-        <Box marginTop={2} flexDirection="column" alignItems="center" gap={1} width={40}>
-          <Box flexDirection="row" gap={1}>
-            <Text color={C.muted}>名称：</Text>
-            <Text bold color={name ? C.cyan : C.muted}>{name || '<输入中>'}</Text>
-            {name && <BlinkingCursor />}
+      <Layout siteName="新建站点" sitePath="" serverRunning={false} height={rows}>
+        <Box flexDirection="column" justifyContent="center" alignItems="center" flexGrow={1}>
+          <Box flexDirection="column" alignItems="center" gap={1}>
+            <Text bold color={C.green}>新建站点</Text>
+            <Text dimColor>输入站点名称后按 Enter 确认</Text>
           </Box>
-          {error && <Text color={C.red}>✗ {error}</Text>}
+
+          <Box marginTop={2} flexDirection="column" alignItems="center" gap={1} width={40}>
+            <Box flexDirection="row" gap={1}>
+              <Text color={C.muted}>名称：</Text>
+              <Text bold color={name ? C.cyan : C.muted}>{name || '<输入中>'}</Text>
+              {name && <BlinkingCursor />}
+            </Box>
+            {error && <Text color={C.red}>✗ {error}</Text>}
+          </Box>
         </Box>
-      </Box>
+      </Layout>
     );
   }
 
   // ── Step 1: 初始化日志 ───────────────────────────────
   return (
-    <Box flexDirection="column" justifyContent="center" alignItems="center" flexGrow={1}>
-      <Box marginBottom={1}>
-        <Text bold color={C.green}>🆕 新建站点</Text>
-      </Box>
-      <Box flexDirection="column" flexGrow={1} overflow="hidden">
-        {logs.length > 0 ? (
-          <LogView logs={logs} />
-        ) : (
-          <Text dimColor>准备初始化...</Text>
+    <Layout siteName="新建站点" sitePath="" serverRunning={false} height={rows}>
+      <Box flexDirection="column" justifyContent="center" alignItems="center" flexGrow={1}>
+        <Box marginBottom={1}>
+          <Text bold color={C.green}>🆕 新建站点</Text>
+        </Box>
+        <Box flexDirection="column" flexGrow={1} overflow="hidden">
+          {logs.length > 0 ? (
+            <LogView logs={logs} />
+          ) : (
+            <Text dimColor>准备初始化...</Text>
+          )}
+        </Box>
+        {/* 底部引导提示 */}
+        {result && (
+          <Box marginTop={1}>
+            <Text bold color={C.cyan}>→ 按 Enter 进入 {result.name} 站点</Text>
+          </Box>
+        )}
+        {failed && (
+          <Box marginTop={1} flexDirection="column" gap={0}>
+            <Text dimColor>Esc 返回</Text>
+          </Box>
         )}
       </Box>
-      {/* 底部引导提示 */}
-      {result && (
-        <Box marginTop={1}>
-          <Text bold color={C.cyan}>→ 按 Enter 进入 {result.name} 站点</Text>
-        </Box>
-      )}
-      {failed && (
-        <Box marginTop={1} flexDirection="column" gap={0}>
-          <Text dimColor>Esc 重新输入 · Enter 返回主菜单</Text>
-        </Box>
-      )}
-    </Box>
+    </Layout>
   );
 }

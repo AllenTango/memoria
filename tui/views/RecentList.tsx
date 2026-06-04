@@ -1,10 +1,11 @@
 /**
- * RecentList — recent projects list (modern FlexBox)
+ * RecentList — recent projects list (Layout版)
  */
 import React, { useState } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, useInput, useWindowSize } from 'ink';
+import { Layout } from '../components/Layout';
+import { SelectableList } from '../components';
 import { C } from '../contexts/TUIContext';
-import { SelectableList } from '../components/SelectableList';
 
 interface RecentProject {
   root: string;
@@ -17,9 +18,11 @@ interface Props {
   onSelect: (root: string) => void;
   onBack: () => void;
   onBrowse: () => void;
+  serverRunning: boolean;
 }
 
-export function RecentList({ recents, onSelect, onBack, onBrowse }: Props): React.ReactElement {
+export function RecentList({ recents, onSelect, onBack, onBrowse, serverRunning }: Props): React.ReactElement {
+  const { rows } = useWindowSize();
   const [selected, setSelected] = useState(0);
   const totalItems = recents.length + 2;
 
@@ -40,13 +43,18 @@ export function RecentList({ recents, onSelect, onBack, onBrowse }: Props): Reac
       return { label: r.name, sub: timeAgo, color: C.cyan };
     }),
     { label: '📂 浏览目录...', color: C.orange },
-    { label: '↩ 返回主菜单', color: C.muted },
   ];
 
   return (
-    <Box flexDirection="column" flexGrow={1}>
+    <Layout
+      siteName="最近项目"
+      sitePath=""
+      height={rows} 
+      serverRunning={serverRunning}
+    >
+      <Box flexDirection="column" justifyContent="center" alignItems="center"  flexGrow={1}>
       <SelectableList items={items} selected={selected} onSelect={setSelected} />
-      <Text dimColor marginTop={1}>↑↓ 选择 · Enter 确认 · Esc 返回</Text>
-    </Box>
+      </Box>
+    </Layout>
   );
 }

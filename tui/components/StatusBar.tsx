@@ -20,6 +20,7 @@ export function StatusBar({ serverRunning, shortcuts }: StatusBarProps): React.R
     ['/', '指令'],
     ['↑↓', '选择'],
     ['Enter', '确认'],
+    ['Esc', '返回/取消'],
     ['x', '退出'],
   ];
 

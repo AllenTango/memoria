@@ -3,31 +3,27 @@
  * Layout: Header + Sidebar(30%) + Detail(70%) + StatusBar
  * 状态：Selector(站点选择) ↔ Dashboard(站点管理)
  */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { render, Box, Text, useInput, useWindowSize, useApp } from 'ink';
+import React, { useState, useCallback } from 'react';
+import { render, useInput, useApp } from 'ink';
 import * as fs from 'fs';
 import * as path from 'path';
 import matter from 'gray-matter';
 
-import { C } from './contexts/TUIContext';
-import { Layout } from './components/Layout';
-import { StatusBar } from './components/StatusBar';
-import { FileTree } from './components/FileTree';
-import { DetailPanel, type LogEntry } from './components/DetailPanel';
-import { ConfirmBox } from './components/ConfirmBox';
-import { SelectableList } from './components/SelectableList';
-import { Spinner } from './components/Spinner';
-import { BlinkingCursor } from './components/BlinkingCursor';
+import { type LogEntry } from './components/DetailPanel';
 
 import { getRecentProjects, addRecentProject, isMemoriaProject, getProjectName } from '../lib/recent';
 import { buildSite, bundleSite } from '../lib/build';
 import { startServer, stopServer, isServerRunning } from '../lib/server-manager';
 import { openInEditor } from '../lib/editor';
-import { CreateWizard } from './views/CreateWizard';
-import { NewContentWizard } from './views/NewContentWizard';
-import { ThemePicker } from './views/ThemePicker';
-import { RecentList } from './views/RecentList';
-import { PathInput } from './views/PathInput';
+import {
+  CreateWizard,
+  NewContentWizard,
+  ThemePicker,
+  RecentList,
+  PathInput,
+  SiteSelector,
+  SiteDashboard,
+} from './views';
 
 // ── 类型 ──────────────────────────────────────────────
 
@@ -48,8 +44,6 @@ interface FileMetadata {
 
 function App(): React.ReactElement {
   const { exit } = useApp();
-  const { columns, rows } = useWindowSize();
-  const W = Math.max(80, columns);
 
   // ── 状态 ──────────────────────────────────────────
 
@@ -61,13 +55,6 @@ function App(): React.ReactElement {
   // FileTree 状态
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [fileMetadata, setFileMetadata] = useState<FileMetadata | null>(null);
-
-  // Menu 状态（站点选择器）
-  const [menuSelected, setMenuSelected] = useState(0);
-  const menuItems = [
-    { label: '新建站点', color: C.green },
-    { label: '打开项目', color: C.cyan },
-  ];
 
   // DetailPanel 状态
   const [detailMode, setDetailMode] = useState<DetailMode>('metadata');
@@ -179,11 +166,7 @@ function App(): React.ReactElement {
         return;
       }
       if (input === 'x' || input === 'X') {
-        // 关闭项目，返回站点选择
-        setCurrentProject(null);
-        setSelectedFilePath(null);
-        setFileMetadata(null);
-        setScreen('main');
+        doExit();
         return;
       }
     }
@@ -290,12 +273,8 @@ function App(): React.ReactElement {
   function handleCommand(input: string): void {
     const c = input.trim();
     if (!c) return;
-    if (c === '/create') { setScreen('create'); return; }
-    if (c === '/open') { setScreen('open'); return; }
-    if (c === '/exit' || c === '/quit') { doExit(); return; }
-
     const bare = c.replace(/^\/+/, '');
-    if (['generate', 'b', 'bundle', 'server', 'deploy'].includes(bare)) {
+    if (['generate', 'b', 'bundle', 'deploy'].includes(bare)) {
       if (!currentProject) {
         setFeedback({ type: 'warn', msg: '⚠ 请先打开一个项目' });
         return;
@@ -308,7 +287,7 @@ function App(): React.ReactElement {
         return;
       }
       setScreen('theme');
-    } else if (bare === 'new:blog' || bare === 'new:vlog' || bare === 'new:photo') {
+    } else if (bare === 'new') {
       if (!currentProject) {
         setFeedback({ type: 'warn', msg: '⚠ 请先打开一个项目' });
         return;
@@ -358,31 +337,29 @@ function App(): React.ReactElement {
   if (!currentProject && screen !== 'main') {
     if (screen === 'open') {
       return (
-        <Layout siteName={undefined} sitePath={undefined} serverRunning={serverRunning} height={rows} showCommandInput={false}>
-          <RecentList
-            recents={recents}
-            onSelect={root => openProject(root)}
-            onBack={() => setScreen('main')}
-            onBrowse={() => setScreen('browse')}
-          />
-        </Layout>
+        <RecentList
+          recents={recents}
+          onSelect={root => openProject(root)}
+          onBack={() => setScreen('main')}
+          onBrowse={() => setScreen('browse')}
+          serverRunning={serverRunning}
+        />
       );
     }
 
     if (screen === 'browse') {
       return (
-        <Layout siteName={undefined} sitePath={undefined} serverRunning={serverRunning} height={rows} showCommandInput={false}>
-          <PathInput
-            onSubmit={(dir) => {
-              if (isMemoriaProject(dir)) openProject(dir);
-              else {
-                setFeedback({ type: 'err', msg: '✗ 目录不存在或不是项目' });
-                setScreen('open');
-              }
-            }}
-            onCancel={() => setScreen('open')}
-          />
-        </Layout>
+        <PathInput
+          onSubmit={(dir) => {
+            if (isMemoriaProject(dir)) openProject(dir);
+            else {
+              setFeedback({ type: 'err', msg: '✗ 目录不存在或不是项目' });
+              setScreen('open');
+            }
+          }}
+          onCancel={() => setScreen('open')}
+          serverRunning={serverRunning}
+        />
       );
     }
   }
@@ -390,61 +367,20 @@ function App(): React.ReactElement {
   // ── SiteSelector 视图（未打开项目）───────────────
 
   if (!currentProject && screen === 'main') {
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
     return (
-      <Layout siteName={undefined} sitePath={undefined} serverRunning={serverRunning} height={rows} showCommandInput={false}>
-        <Box flexDirection="column" flexGrow={1}>
-          {/* 主菜单列表 */}
-          <SelectableList
-            items={menuItems}
-            selected={menuSelected}
-            onSelect={setMenuSelected}
-            onConfirm={(i) => {
-              if (i === 0) setScreen('create');
-              else setScreen('open');
-            }}
-          />
-          {/* 最近项目 */}
-          {recents.length > 0 && (
-            <Box flexDirection="column" marginTop={2}>
-              <Text dimColor bold>最近项目</Text>
-              <Box flexDirection="column" marginTop={0} gap={0}>
-                {recents.slice(0, 5).map((r) => (
-                  <Text
-                    key={r.root}
-                    color={C.cyan}
-                    wrap="truncate"
-                    onClick={() => openProject(r.root)}
-                  >
-                    📂 {r.name}
-                  </Text>
-                ))}
-              </Box>
-            </Box>
-          )}
-        </Box>
-      </Layout>
+      <SiteSelector
+        onMenuConfirm={(i) => { if (i === 0) setScreen('create'); else setScreen('open'); }}
+        onRecentSelect={(root) => openProject(root)}
+      />
     );
   }
 
   // ── Create Wizard 视图（统一 Layout）─────────────────────────
   if (!currentProject && screen === 'create') {
-    return (
-      <Layout
-        siteName="新建站点"
-        sitePath=""
-        serverRunning={serverRunning}
-        height={rows}
-        showCommandInput={false}
-      >
-        <CreateWizard onComplete={(p) => { if (p) openProject(p); setScreen('main'); }} />
-      </Layout>
-    );
+    return <CreateWizard onComplete={(p) => { if (p) openProject(p); setScreen('main'); }} />;
   }
 
-  // ── ThemePicker 视图（Layout 在 view 内部）───────────────
+  // ── ThemePicker 视图 ────────────────────────────────
   if (screen === 'theme' && currentProject) {
     return (
       <ThemePicker
@@ -460,6 +396,7 @@ function App(): React.ReactElement {
       <NewContentWizard
         projectRoot={currentProject}
         onComplete={() => setScreen('main')}
+        serverRunning={serverRunning}
       />
     );
   }
@@ -467,33 +404,17 @@ function App(): React.ReactElement {
   // ── SiteDashboard 视图（已打开项目）───────────────
 
   return (
-    <Layout
-      siteName={currentProject ? getProjectName(currentProject) : undefined}
-      sitePath={currentProject}
+    <SiteDashboard
+      currentProject={currentProject}
+      selectedFilePath={selectedFilePath}
+      fileMetadata={fileMetadata}
+      detailMode={detailMode}
+      logs={logs}
+      activeCommand={activeCommand}
       serverRunning={serverRunning}
-      height={rows}
-      showCommandInput={true}
+      onFileSelect={handleFileSelect}
       onCommand={handleCommand}
-    >
-      <>
-        {/* Left Sidebar — FileTree */}
-        <FileTree
-          rootDir={currentProject || ''}
-          selectedPath={selectedFilePath}
-          onSelectFile={handleFileSelect}
-        />
-      </>
-
-      <>
-        {/* Right Detail/Log */}
-        <DetailPanel
-          mode={detailMode}
-          metadata={fileMetadata || undefined}
-          logs={logs}
-          activeCommand={activeCommand || undefined}
-        />
-      </>
-    </Layout>
+    />
   );
 }
 

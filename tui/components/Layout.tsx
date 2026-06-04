@@ -6,7 +6,6 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import { C } from '../contexts/TUIContext';
 import { StatusBar } from './StatusBar';
-import { CommandInput } from './CommandInput';
 
 interface LayoutProps {
   children: React.ReactNode; // 主体内容，由具体视图组件决定布局
@@ -14,11 +13,9 @@ interface LayoutProps {
   sitePath?: string;
   serverRunning: boolean;
   height?: number;
-  showCommandInput?: boolean;
-  onCommand?: (cmd: string) => void;
 }
 
-export function Layout({ children, siteName, sitePath, serverRunning, height, showCommandInput, onCommand }: LayoutProps): React.ReactElement {
+export function Layout({ children, siteName, sitePath, serverRunning, height}: LayoutProps): React.ReactElement {
   const now = new Date();
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
@@ -51,9 +48,6 @@ export function Layout({ children, siteName, sitePath, serverRunning, height, sh
       {/* ── Footer（固定底部）──────────────────────────────── */}
       <Box flexShrink={0} flexDirection="column" gap={1} marginTop={1}>
         <StatusBar serverRunning={serverRunning} />
-        {showCommandInput && onCommand && (
-          <CommandInput visible={showCommandInput} onCommand={onCommand} />
-        )}
       </Box>
     </Box>
   );

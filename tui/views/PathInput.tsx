@@ -1,17 +1,20 @@
 /**
- * PathInput — directory path input screen (modern FlexBox)
+ * PathInput — directory path input screen (Layout版)
  */
 import React, { useState } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text, useInput, useWindowSize } from 'ink';
+import { Layout } from '../components/Layout';
+import { BlinkingCursor } from '../components';
 import { C } from '../contexts/TUIContext';
-import { BlinkingCursor } from '../components/BlinkingCursor';
 
 interface Props {
   onSubmit: (path: string) => void;
   onCancel: () => void;
+  serverRunning: boolean;
 }
 
-export function PathInput({ onSubmit, onCancel }: Props): React.ReactElement {
+export function PathInput({ onSubmit, onCancel, serverRunning }: Props): React.ReactElement {
+  const { rows } = useWindowSize();
   const [value, setValue] = useState('');
 
   useInput((input, key) => {
@@ -27,8 +30,12 @@ export function PathInput({ onSubmit, onCancel }: Props): React.ReactElement {
   });
 
   return (
-    <Box flexDirection="column" flexGrow={1}>
-      <Box flexDirection="column" gap={1}>
+    <Layout
+      siteName="输入路径"
+      sitePath=""
+      serverRunning={serverRunning}
+    >
+      <Box flexDirection="column" justifyContent="center" alignItems="center"  height={rows} gap={1}>
         <Box flexDirection="row">
           <Text color={C.muted}>路径: </Text>
           <Text color={value ? C.cyan : C.muted} wrap="truncate">
@@ -36,8 +43,7 @@ export function PathInput({ onSubmit, onCancel }: Props): React.ReactElement {
           </Text>
           {value && <BlinkingCursor />}
         </Box>
-        <Text dimColor>输入路径后按 Enter · Esc 返回</Text>
       </Box>
-    </Box>
+    </Layout>
   );
 }

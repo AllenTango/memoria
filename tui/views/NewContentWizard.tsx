@@ -1,12 +1,13 @@
 /**
- * NewContentWizard — blog/vlog/photo content creation wizard (modern FlexBox)
+ * NewContentWizard — blog/vlog/photo content creation wizard (Layout版)
  */
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import * as path from 'path';
+import { Layout } from '../components/Layout';
+import { Spinner } from '../components';
+import { BlinkingCursor } from '../components';
 import { C } from '../contexts/TUIContext';
-import { Spinner } from '../components/Spinner';
-import { BlinkingCursor } from '../components/BlinkingCursor';
 import { createContent } from '../../lib/content';
 
 const CONTENT_TYPES = [
@@ -18,9 +19,10 @@ const CONTENT_TYPES = [
 interface Props {
   projectRoot: string;
   onComplete: () => void;
+  serverRunning: boolean;
 }
 
-export function NewContentWizard({ projectRoot, onComplete }: Props): React.ReactElement {
+export function NewContentWizard({ projectRoot, onComplete, serverRunning }: Props): React.ReactElement {
   const [type, setType] = useState<'blog' | 'vlog' | 'photo'>('blog');
   const [title, setTitle] = useState('');
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
@@ -70,8 +72,12 @@ export function NewContentWizard({ projectRoot, onComplete }: Props): React.Reac
   const typeObj = CONTENT_TYPES.find((t: typeof CONTENT_TYPES[number]) => t.key === type)!;
 
   return (
-    <Box flexDirection="column" flexGrow={1}>
-      <Box flexDirection="column" gap={1}>
+    <Layout
+      siteName="新建内容"
+      sitePath={projectRoot}
+      serverRunning={serverRunning}
+    >
+      <Box flexDirection="column" justifyContent="center" alignItems="center"  gap={1}>
         <Box flexDirection="row" justifyContent="space-between">
           <Text bold color={C.cyan}>📝 新建内容</Text>
           <Text dimColor>{path.basename(projectRoot)}</Text>
@@ -120,10 +126,6 @@ export function NewContentWizard({ projectRoot, onComplete }: Props): React.Reac
           <Text color={C.green} bold>✓ 内容创建完成！</Text>
         )}
       </Box>
-
-      <Text dimColor marginTop={1}>
-        {step === 3 ? '按 Enter 返回' : 'Enter 确认 · Esc 返回'}
-      </Text>
-    </Box>
+    </Layout>
   );
 }

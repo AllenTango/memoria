@@ -1,9 +1,11 @@
 /**
  * ThemePicker — built-in theme selector (modern FlexBox)
+ * Wrapped in Layout for consistent header/footer chrome.
  */
 import React, { useState } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text, useInput, useWindowSize } from 'ink';
 import { C } from '../contexts/TUIContext';
+import { Layout } from '../components/Layout';
 import { applyTheme } from '../../lib/apply-theme';
 
 const BUILT_IN_THEMES = [
@@ -19,6 +21,7 @@ interface Props {
 }
 
 export function ThemePicker({ projectRoot, onClose }: Props): React.ReactElement {
+  const { rows } = useWindowSize();
   const [selected, setSelected] = useState(0);
 
   useInput((_, key) => {
@@ -29,20 +32,21 @@ export function ThemePicker({ projectRoot, onClose }: Props): React.ReactElement
   });
 
   return (
-    <Box flexDirection="column" flexGrow={1}>
-      <Box flexDirection="column" gap={0}>
-        {BUILT_IN_THEMES.map((t, i) => (
-          <Box key={t.name} flexDirection="row" gap={1}>
-            <Text color={i === selected ? C.green : C.muted} wrap="truncate">
-              {i === selected ? '▶' : ' '}
-            </Text>
-            <Text color={i === selected ? C.green : C.muted} bold={i === selected} wrap="truncate">
-              {t.emoji} {t.name} — {t.desc}
-            </Text>
-          </Box>
-        ))}
+    <Layout siteName="选择主题" sitePath={projectRoot} serverRunning={false} height={rows}>
+      <Box flexDirection="column" flexGrow={1} justifyContent="center" alignItems="center">
+        <Box flexDirection="column" gap={0}>
+          {BUILT_IN_THEMES.map((t, i) => (
+            <Box key={t.name} flexDirection="row" gap={1}>
+              <Text color={i === selected ? C.green : C.muted} wrap="truncate">
+                {i === selected ? '▶' : ' '}
+              </Text>
+              <Text color={i === selected ? C.green : C.muted} bold={i === selected} wrap="truncate">
+                {t.emoji} {t.name} — {t.desc}
+              </Text>
+            </Box>
+          ))}
+        </Box>
       </Box>
-      <Text dimColor marginTop={1}>↑↓ 选择 · Enter 确认 · Esc 返回</Text>
-    </Box>
+    </Layout>
   );
 }
