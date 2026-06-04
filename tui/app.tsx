@@ -358,20 +358,20 @@ function App(): React.ReactElement {
   if (!currentProject && screen !== 'main') {
     if (screen === 'open') {
       return (
-        <Box flexDirection="column" width={W} minWidth={80}>
+        <Layout siteName={undefined} sitePath={undefined} serverRunning={serverRunning} height={rows} showCommandInput={false}>
           <RecentList
             recents={recents}
             onSelect={root => openProject(root)}
             onBack={() => setScreen('main')}
             onBrowse={() => setScreen('browse')}
           />
-        </Box>
+        </Layout>
       );
     }
 
     if (screen === 'browse') {
       return (
-        <Box flexDirection="column" width={W} minWidth={80}>
+        <Layout siteName={undefined} sitePath={undefined} serverRunning={serverRunning} height={rows} showCommandInput={false}>
           <PathInput
             onSubmit={(dir) => {
               if (isMemoriaProject(dir)) openProject(dir);
@@ -382,7 +382,7 @@ function App(): React.ReactElement {
             }}
             onCancel={() => setScreen('open')}
           />
-        </Box>
+        </Layout>
       );
     }
   }
@@ -395,124 +395,72 @@ function App(): React.ReactElement {
 
     return (
       <Layout siteName={undefined} sitePath={undefined} serverRunning={serverRunning} height={rows} showCommandInput={false}>
-        <>
-          {/* Left Sidebar — 菜单列表 */}
-          <Box flexDirection="column" flexGrow={1}>
-            <SelectableList
-              items={menuItems}
-              selected={menuSelected}
-              onSelect={setMenuSelected}
-              onConfirm={(i) => {
-                if (i === 0) setScreen('create');
-                else setScreen('open');
-              }}
-            />
-          </Box>
-        </>
-
-        <>
-          {/* Right Detail — 最近项目 + 快捷键提示 */}
-          <Box flexDirection="column" flexGrow={1} gap={1}>
-            {recents.length > 0 && (
-              <Box flexDirection="column">
-                <Text dimColor bold>最近项目</Text>
-                <Box flexDirection="column" marginTop={0} gap={0}>
-                  {recents.slice(0, 5).map((r) => (
-                    <Text
-                      key={r.root}
-                      color={C.cyan}
-                      wrap="truncate"
-                      onClick={() => openProject(r.root)}
-                    >
-                      📂 {r.name}
-                    </Text>
-                  ))}
-                </Box>
+        <Box flexDirection="column" flexGrow={1}>
+          {/* 主菜单列表 */}
+          <SelectableList
+            items={menuItems}
+            selected={menuSelected}
+            onSelect={setMenuSelected}
+            onConfirm={(i) => {
+              if (i === 0) setScreen('create');
+              else setScreen('open');
+            }}
+          />
+          {/* 最近项目 */}
+          {recents.length > 0 && (
+            <Box flexDirection="column" marginTop={2}>
+              <Text dimColor bold>最近项目</Text>
+              <Box flexDirection="column" marginTop={0} gap={0}>
+                {recents.slice(0, 5).map((r) => (
+                  <Text
+                    key={r.root}
+                    color={C.cyan}
+                    wrap="truncate"
+                    onClick={() => openProject(r.root)}
+                  >
+                    📂 {r.name}
+                  </Text>
+                ))}
               </Box>
-            )}
-            <Box flexDirection="column" marginTop={1}>
-              <Text dimColor>↑↓ 选择 · Enter 确认 · Esc 退出</Text>
             </Box>
-          </Box>
-        </>
+          )}
+        </Box>
       </Layout>
     );
   }
 
-  // ── Create Wizard 视图（独立全屏，不使用 Layout）─────────────
+  // ── Create Wizard 视图（统一 Layout）─────────────────────────
   if (!currentProject && screen === 'create') {
     return (
-      <CreateWizard onComplete={(p) => { if (p) openProject(p); setScreen('main'); }} />
+      <Layout
+        siteName="新建站点"
+        sitePath=""
+        serverRunning={serverRunning}
+        height={rows}
+        showCommandInput={false}
+      >
+        <CreateWizard onComplete={(p) => { if (p) openProject(p); setScreen('main'); }} />
+      </Layout>
     );
   }
 
-  // ── ThemePicker 视图（统一 Layout）────────────────
+  // ── ThemePicker 视图（Layout 在 view 内部）───────────────
   if (screen === 'theme' && currentProject) {
     return (
-      <Layout
-        siteName={getProjectName(currentProject)}
-        sitePath={currentProject}
-        serverRunning={serverRunning}
-        height={rows}
-        showCommandInput={false}
-      >
-        <>
-          {/* Left Sidebar — 主题选择引导 */}
-          <Box flexDirection="column" gap={1}>
-            <Text bold color={C.pink}>🎨 切换主题</Text>
-            <Text dimColor>选择内置主题应用到站点</Text>
-            <Box flexDirection="column" marginTop={1} gap={0}>
-              <Text color={C.muted}>① 选择主题</Text>
-              <Text color={C.muted}>② 确认应用</Text>
-              <Text color={C.muted}>③ 完成</Text>
-            </Box>
-            <Text dimColor marginTop={2}>Esc 返回</Text>
-          </Box>
-        </>
-
-        <>
-          {/* Right Detail — 主题选择器 */}
-          <ThemePicker
-            projectRoot={currentProject}
-            onClose={() => setScreen('main')}
-          />
-        </>
-      </Layout>
+      <ThemePicker
+        projectRoot={currentProject}
+        onClose={() => setScreen('main')}
+      />
     );
   }
 
-  // ── NewContentWizard 视图（统一 Layout）───────────
+  // ── NewContentWizard 视图（Layout 在 view 内部）─────────
   if (screen === 'newContent' && currentProject) {
     return (
-      <Layout
-        siteName={getProjectName(currentProject)}
-        sitePath={currentProject}
-        serverRunning={serverRunning}
-        height={rows}
-        showCommandInput={false}
-      >
-        <>
-          {/* Left Sidebar — 新建内容引导 */}
-          <Box flexDirection="column" gap={1}>
-            <Text bold color={C.green}>📝 新建内容</Text>
-            <Text dimColor>选择类型并输入标题即可创建</Text>
-            <Box flexDirection="column" marginTop={1} gap={0}>
-              <Text color={C.muted}>① 选择类型</Text>
-              <Text color={C.muted}>② 输入标题</Text>
-              <Text color={C.muted}>③ 确认创建</Text>
-            </Box>
-            <Text dimColor marginTop={2}>Esc 返回</Text>
-          </Box>
-        </>
-
-        <>
-          {/* Right Detail — 新建内容向导 */}
-          <NewContentWizard
-            projectRoot={currentProject}
-            onComplete={() => setScreen('main')}
-          />
-        </>
-      </Layout>
+      <NewContentWizard
+        projectRoot={currentProject}
+        onComplete={() => setScreen('main')}
+      />
     );
   }
 

@@ -30,20 +30,17 @@ export function ThemePicker({ projectRoot, onClose }: Props): React.ReactElement
 
   return (
     <Box flexDirection="column" flexGrow={1}>
-      <Box borderStyle="round" borderColor={C.pink} paddingX={1} flexDirection="column">
-        <Text bold color={C.pink}>🎨 切换主题</Text>
-        <Box flexDirection="column" marginTop={1} gap={0}>
-          {BUILT_IN_THEMES.map((t, i) => (
-            <Box key={t.name} flexDirection="row" gap={1}>
-              <Text color={i === selected ? C.green : C.muted} wrap="truncate">
-                {i === selected ? '▶' : ' '}
-              </Text>
-              <Text color={i === selected ? C.green : C.muted} bold={i === selected} wrap="truncate">
-                {t.emoji} {t.name} — {t.desc}
-              </Text>
-            </Box>
-          ))}
-        </Box>
+      <Box flexDirection="column" gap={0}>
+        {BUILT_IN_THEMES.map((t, i) => (
+          <Box key={t.name} flexDirection="row" gap={1}>
+            <Text color={i === selected ? C.green : C.muted} wrap="truncate">
+              {i === selected ? '▶' : ' '}
+            </Text>
+            <Text color={i === selected ? C.green : C.muted} bold={i === selected} wrap="truncate">
+              {t.emoji} {t.name} — {t.desc}
+            </Text>
+          </Box>
+        ))}
       </Box>
       <Text dimColor marginTop={1}>↑↓ 选择 · Enter 确认 · Esc 返回</Text>
     </Box>

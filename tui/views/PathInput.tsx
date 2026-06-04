@@ -4,7 +4,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { C } from '../contexts/TUIContext';
-import { Header } from '../components/Frame';
 import { BlinkingCursor } from '../components/BlinkingCursor';
 
 interface Props {
@@ -29,18 +28,15 @@ export function PathInput({ onSubmit, onCancel }: Props): React.ReactElement {
 
   return (
     <Box flexDirection="column" flexGrow={1}>
-      <Box borderStyle="round" borderColor={C.cyan} paddingX={1} flexDirection="column">
-        <Text bold color={C.cyan}>📂 打开目录</Text>
-        <Box flexDirection="column" marginTop={1} gap={1}>
-          <Box flexDirection="row">
-            <Text color={C.muted}>路径: </Text>
-            <Text color={value ? C.cyan : C.muted} wrap="truncate">
-              {value || '<输入路径>'}
-            </Text>
-            {value && <BlinkingCursor />}
-          </Box>
-          <Text dimColor>输入路径后按 Enter · Esc 返回</Text>
+      <Box flexDirection="column" gap={1}>
+        <Box flexDirection="row">
+          <Text color={C.muted}>路径: </Text>
+          <Text color={value ? C.cyan : C.muted} wrap="truncate">
+            {value || '<输入路径>'}
+          </Text>
+          {value && <BlinkingCursor />}
         </Box>
+        <Text dimColor>输入路径后按 Enter · Esc 返回</Text>
       </Box>
     </Box>
   );

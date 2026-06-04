@@ -71,56 +71,54 @@ export function NewContentWizard({ projectRoot, onComplete }: Props): React.Reac
 
   return (
     <Box flexDirection="column" flexGrow={1}>
-      <Box borderStyle="round" borderColor={C.cyan} paddingX={1} flexDirection="column">
+      <Box flexDirection="column" gap={1}>
         <Box flexDirection="row" justifyContent="space-between">
           <Text bold color={C.cyan}>📝 新建内容</Text>
           <Text dimColor>{path.basename(projectRoot)}</Text>
         </Box>
 
-        <Box flexDirection="column" marginTop={1} gap={1}>
-          {step === 0 && (
-            <>
-              <Text color={C.muted}>选择内容类型</Text>
-              {CONTENT_TYPES.map((t: typeof CONTENT_TYPES[number]) => (
-                <Box key={t.key} flexDirection="row" gap={1}>
-                  <Text color={type === t.key ? C.green : C.muted} wrap="truncate">
-                    {type === t.key ? '▶' : ' '}
-                  </Text>
-                  <Text color={type === t.key ? t.color : C.muted} bold={type === t.key} wrap="truncate">
-                    {t.emoji} {t.label}
-                  </Text>
-                </Box>
-              ))}
-            </>
-          )}
-
-          {step === 1 && (
-            <>
-              <Box flexDirection="row" gap={1}>
-                <Text color={C.muted}>类型: </Text>
-                <Text color={typeObj.color}>{typeObj.emoji} {typeObj.label}</Text>
-              </Box>
-              <Text color={C.muted}>标题</Text>
-              <Box flexDirection="row" gap={1}>
-                <Text color={title ? C.cyan : C.muted} bold wrap="truncate">
-                  {title || '<输入中>'}
+        {step === 0 && (
+          <>
+            <Text color={C.muted}>选择内容类型</Text>
+            {CONTENT_TYPES.map((t: typeof CONTENT_TYPES[number]) => (
+              <Box key={t.key} flexDirection="row" gap={1}>
+                <Text color={type === t.key ? C.green : C.muted} wrap="truncate">
+                  {type === t.key ? '▶' : ' '}
                 </Text>
-                {title && <BlinkingCursor />}
+                <Text color={type === t.key ? t.color : C.muted} bold={type === t.key} wrap="truncate">
+                  {t.emoji} {t.label}
+                </Text>
               </Box>
-              {error && <Text color={C.red}>✗ {error}</Text>}
-            </>
-          )}
+            ))}
+          </>
+        )}
 
-          {step === 2 && (
+        {step === 1 && (
+          <>
             <Box flexDirection="row" gap={1}>
-              <Spinner label="正在创建内容..." />
+              <Text color={C.muted}>类型: </Text>
+              <Text color={typeObj.color}>{typeObj.emoji} {typeObj.label}</Text>
             </Box>
-          )}
+            <Text color={C.muted}>标题</Text>
+            <Box flexDirection="row" gap={1}>
+              <Text color={title ? C.cyan : C.muted} bold wrap="truncate">
+                {title || '<输入中>'}
+              </Text>
+              {title && <BlinkingCursor />}
+            </Box>
+            {error && <Text color={C.red}>✗ {error}</Text>}
+          </>
+        )}
 
-          {step === 3 && (
-            <Text color={C.green} bold>✓ 内容创建完成！</Text>
-          )}
-        </Box>
+        {step === 2 && (
+          <Box flexDirection="row" gap={1}>
+            <Spinner label="正在创建内容..." />
+          </Box>
+        )}
+
+        {step === 3 && (
+          <Text color={C.green} bold>✓ 内容创建完成！</Text>
+        )}
       </Box>
 
       <Text dimColor marginTop={1}>

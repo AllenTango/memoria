@@ -4,7 +4,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { C } from '../contexts/TUIContext';
-import { Header } from '../components/Frame';
 import { SelectableList } from '../components/SelectableList';
 
 interface RecentProject {
@@ -46,12 +45,7 @@ export function RecentList({ recents, onSelect, onBack, onBrowse }: Props): Reac
 
   return (
     <Box flexDirection="column" flexGrow={1}>
-      <Box borderStyle="round" borderColor={C.cyan} paddingX={1} flexDirection="column">
-        <Text bold color={C.cyan}>📂 打开项目</Text>
-        <Box flexDirection="column" marginTop={1}>
-          <SelectableList items={items} selected={selected} onSelect={setSelected} />
-        </Box>
-      </Box>
+      <SelectableList items={items} selected={selected} onSelect={setSelected} />
       <Text dimColor marginTop={1}>↑↓ 选择 · Enter 确认 · Esc 返回</Text>
     </Box>
   );
