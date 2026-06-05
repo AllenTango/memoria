@@ -2,18 +2,19 @@
  * Layout — 统一三段式布局:Header + Body(左栏 + 右栏) + Footer
  *
  * 关键设计:
- * - 用 useWindowSize 拿 explicit numeric rows/columns,顶层 Box 强制 width/height
- *   (避免 alternateScreen mode 下 fragment 缩到内容高度的 Ink 7 bug)
- * - 顶层 Box 加 outer border(粉红色),inner content 自动 fill border 内部
- *   (border 吃 2 行/列,explicit height=rows 时 inner 实际 = rows-2,flexGrow 1 正常 fill)
+ * - 顶层 Box 用 `flexGrow=1 flexShrink=0`,靠 alternateScreen mode 自动 fill viewport
+ *   **避免 `width={safeCols} height={safeRows}` + outer border 互冲**
+ *   (useWindowSize 喺 alternateScreen 下 height detection 失效,safeRows fallback 40,
+ *    outer border 吃 2 行,Layout 实际只剩 38 行,Header 被压扁)
+ * - 顶层 Box 加 outer border(粉红色),inner content 靠 flexGrow=1 fill border 内部
  * - Header / Footer 都加 flexShrink={0} 防止被压扁
  * - Body flexGrow={1} 填满剩余空间
  * - Body 内部 top row(左栏 + 右栏)flexGrow={1}
  * - 左栏固定 30%(24-40 columns),右栏 flexGrow={1} 吃剩余
  *
  * **CommandInput 不在此组件内** — 它用 position="absolute" 浮层,
- *   必须放在 view 顶层 Fragment(同 Layout 兄弟节点),否则在 alternateScreen
- *   mode 下 absolute 定位会失效,fallback 到占据 flow 空间
+ *   必须放在 view 顶层 Fragment(同 Layout 兄弟节点),否则会占据 flow 空间
+ *   把 CommandInput 推到 viewport 之外
  *
  * 由 SiteSelector / SiteDashboard 各自传入 leftPanel / rightPanel 内容
  * (它们各自维护 mode 状态,Layout 不知道 mode)
@@ -43,10 +44,9 @@ export function Layout({
   sitePath,
   serverRunning,
 }: LayoutProps): React.ReactElement {
-  // 关键:顶层 Box 用 explicit numeric 强制占满 viewport
-  // (避免 fragment 缩到内容高度导致 StatusBar/CommandInput 被挤出)
-  const { columns, rows } = useWindowSize();
-  const safeRows = rows > 0 ? rows : 40;
+  // 用 useWindowSize 拿 explicit numeric columns,做响应式 header 内容
+  // (避免 path 太长时 Header overflow)
+  const { columns } = useWindowSize();
   const safeCols = columns > 0 ? columns : 120;
 
   // 日期只在分钟级变化,useMemo + mount 时算一次即可
@@ -58,11 +58,11 @@ export function Layout({
 
   return (
     <Box
-      width={safeCols}
-      height={safeRows}
+      flexDirection="column"
+      flexGrow={1}
+      flexShrink={0}
       borderStyle="round"
       borderColor={C.pink}
-      flexDirection="column"
     >
       {/* ── Header(顶栏) ───────────────────────────────────── */}
       <Box
@@ -73,8 +73,14 @@ export function Layout({
         alignItems="center"
       >
         <Text bold color={C.pink}>📚 Memoria v1.0</Text>
-        {siteName && <Text dimColor>📂 {siteName}</Text>}
-        {sitePath && <Text dimColor color={C.muted}>{sitePath}</Text>}
+        {siteName && <Text dimColor wrap="truncate">📂 {siteName}</Text>}
+        {sitePath && (
+          <Text dimColor color={C.muted} wrap="truncate">
+            {sitePath.length > Math.max(20, safeCols - 40)
+              ? '...' + sitePath.slice(-(Math.max(20, safeCols - 40)))
+              : sitePath}
+          </Text>
+        )}
         <Text dimColor>{dateStr}</Text>
       </Box>
 

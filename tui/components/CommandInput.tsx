@@ -1,12 +1,17 @@
 /**
- * CommandInput — 固定底部命令输入框,常驻 Layout 底部
+ * CommandInput — 固定底部命令输入框
  *
  * 设计参考 opencode / claude-code / deepcode-cli:
- * - 输入行永远在屏幕底部 1 行(borderStyle="round" 包裹)
- * - 按 / 唤出命令面板时,下拉用 position="absolute" 浮在屏幕底部**上方**,
- *   覆盖在主视图上,**不挤占**主视图布局,不会因为下拉高而让 logs/file tree 缩小
- * - 不会从屏幕底部溢出(absolute 定位 + bottom={2} 给输入行让位)
+ * - 输入行永远在屏幕底部(`position="absolute" bottom={1}`,给外层 border 让 1 行)
+ * - 按 / 唤出命令面板时,下拉用 `position="absolute"` 浮在输入行**上方**,
+ *   覆盖在主视图上,**不挤占**主视图布局
  * - ↑/↓ 选择,Enter 执行,j/k 留给 FileTree,Esc 退出
+ *
+ * 焦点管理:
+ * - **用 Ink 7 built-in isActive option**:`useInput(handleInput, { isActive })`
+ *   内部用 React 19 useEffectEvent 解决 callback 重新 create 但 event 订阅不变嘅问题
+ *   唔需要 ref-based 守 isActive(避免 re-mount 丢 keypress)
+ * - isActive 由父级 view 控制:用户焦点在命令面板时 true
  *
  * 性能:
  * - 状态镜像到 ref 同步,setState 立即更新 ref(避免 Ink useInput 批处理陷阱)
@@ -31,8 +36,8 @@ interface CommandInputProps {
   /**
    * 父级焦点控制:
    * - true:正常监听所有按键(用户正在命令面板输入)
-   * - false:只监听 `/`(激活命令面板),其他按键 return 让出
-   *   给左/右栏的 panel(避免多 useInput 冲突)
+   * - false:不订阅 input event(用 Ink 7 built-in isActive option,内部 unmount 监听)
+   *   让出给左/右栏的 panel(避免多 useInput 冲突)
    */
   isActive?: boolean;
 }
@@ -42,11 +47,6 @@ export function CommandInput({ onCommand, onActiveChange, isActive = true }: Com
   const [selected, setSelected] = useState(INITIAL_STATE.selected);
   const [showHints, setShowHintsState] = useState(INITIAL_STATE.showHints);
 
-  // 关键:isActive 用 ref 镜像,useInput 嘅 useCallback 不依赖 isActive
-  // (避免 isActive 改变时 useCallback 重新 create,导致 useInput 重新 subscribe 丢 keypress)
-  const isActiveRef = useRef(isActive);
-  useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
-
   // 派生列表
   const filtered = useMemo(
     () => filterCommands(ALL_COMMANDS as CommandItem[], input, showHints),
@@ -54,7 +54,7 @@ export function CommandInput({ onCommand, onActiveChange, isActive = true }: Com
   );
   const safeSelected = filtered.length > 0 ? selected % filtered.length : 0;
 
-  // ── 同步 ref 镜像 ──
+  // ── 同步 ref 镜像(state 改变时 setState + setRef 同步) ──
   const inputRef = useRef(input);
   const selectedRef = useRef(selected);
   const showHintsRef = useRef(showHints);
@@ -105,10 +105,13 @@ export function CommandInput({ onCommand, onActiveChange, isActive = true }: Com
     }
   }, []);
 
-  // ── 稳定的 handler(isActive 不在 deps,用 isActiveRef 守) ──
+  // ── 稳定的 handler ──
+  // isActive 闭包 capture:isActive prop 变化时 useCallback 重新 create,
+  // 但 Ink 7 useInput 内部用 React 19 useEffectEvent,event 订阅不变(只 setRawMode 状态变)
+  // 避免 ref-based 守 isActive 嘅 useEffect 异步导致嘅 1-2 帧延迟
   const handleInput = useCallback((inp: string, key: HandlerKey) => {
     // 焦点不在命令面板时,只接 `/`(激活命令面板),其他键让出给左/右栏
-    if (!isActiveRef.current) {
+    if (!isActive) {
       if (inp === '/') {
         setShowHints(true);
         setSelectedSync(0);
@@ -129,26 +132,25 @@ export function CommandInput({ onCommand, onActiveChange, isActive = true }: Com
     setInput(result.next.input);
     setShowHints(result.next.showHints);
     setSelectedSync(result.next.selected);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onCommand, setInput, setShowHints, setSelectedSync]);
+  }, [isActive, onCommand, setInput, setShowHints, setSelectedSync]);
 
-  useInput(handleInput);
+  // **用 Ink 7 built-in isActive option** — 内部 useEffectEvent 处理 callback re-mount
+  useInput(handleInput, { isActive });
 
   // ── 渲染 ──
   // Dracula 主题风格 — 关键是文字/背景对比度:
   // - 下拉用 surface(#44475a) 背景浮在主视图上
   // - 未选中文字用 fg(#f8f8f2 浅白),在 surface 上有足够对比度
   // - 选中项紫底(#bd93f9) + 深色字(#282a36) 反色,跟未选中项对比强烈
-  // - 间距 bottom=3: 1 行输入行 + 1 行间距 + 1 行间距
   return (
     <>
-      {/* 下拉浮层(覆盖式,绝对定位) */}
+      {/* 下拉浮层(覆盖式,绝对定位,屏幕 root 倒数第 3 行起) */}
       {showHints && filtered.length > 0 && (
         <Box
           position="absolute"
           bottom={3}
-          left={2}
-          right={2}
+          left={1}
+          right={1}
           flexDirection="column"
           borderStyle="round"
           borderColor={C.purple}
@@ -205,8 +207,8 @@ export function CommandInput({ onCommand, onActiveChange, isActive = true }: Com
         <Box
           position="absolute"
           bottom={3}
-          left={2}
-          right={2}
+          left={1}
+          right={1}
           flexDirection="column"
           borderStyle="round"
           borderColor={C.red}
@@ -217,9 +219,12 @@ export function CommandInput({ onCommand, onActiveChange, isActive = true }: Com
         </Box>
       )}
 
-      {/* 底部输入行 — 永远 1 行,固定在屏幕底部(无背景,跟下拉区分) */}
+      {/* 底部输入行 — 永远 1 行,固定在屏幕底部(给外层 border 让 1 行) */}
       <Box
-        flexShrink={0}
+        position="absolute"
+        bottom={1}
+        left={1}
+        right={1}
         borderStyle="round"
         borderColor={showHints ? C.purple : C.muted}
         paddingX={1}
