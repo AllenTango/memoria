@@ -5,3 +5,10 @@ dist/
 dist-lib/
 tests/fixtures/
 test-site1/
+
+# TUI 调试用的临时测试(开发期跑,不入库)
+tests/unit/bench-v.test.mjs
+tests/unit/bin-paths.test.mjs
+tests/unit/command-input.test.mjs
+tests/unit/server-bug-repro.test.mjs
+tests/unit/server-direct.test.mjs
