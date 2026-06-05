@@ -13,7 +13,16 @@ import { fileURLToPath, pathToFileURL } from 'url';
 
 function selfDir(): string {
   if (process.argv[1]) {
-    return path.dirname(path.resolve(process.argv[1]));
+    try {
+      // 跟随 symlink — Linux 上 npm install 建 symlink(<prefix>/bin/memoria →
+      // <prefix>/lib/node_modules/memoria/dist/cli.js),arg[1] 系 symlink path
+      // 唔跟会指向 <prefix>/bin (冇 cli-tui*.js + package.json 找不到 → vunknown)
+      const realPath = fs.realpathSync(process.argv[1]);
+      return path.dirname(path.resolve(realPath));
+    } catch {
+      // realpath 失败时(罕见)fallback to argv[1] 原值
+      return path.dirname(path.resolve(process.argv[1]));
+    }
   }
   try {
     return path.dirname(fileURLToPath(import.meta.url));
