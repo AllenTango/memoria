@@ -4,9 +4,10 @@
  */
 import * as path from 'path';
 import * as fs from 'fs';
+import { getMemoriaDir, getRecentFilePath } from './paths.js';
 
-const MEMORIA_DIR = path.join(process.env.HOME || '/home/dev', '.memoria');
-const RECENT_FILE = path.join(MEMORIA_DIR, 'recent.json');
+const MEMORIA_DIR = getMemoriaDir();
+const RECENT_FILE = getRecentFilePath();
 
 interface RecentEntry {
   root: string;

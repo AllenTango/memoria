@@ -6,7 +6,8 @@
 import { createServer, Server } from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
-import { exec, spawn } from 'child_process';
+import { spawn } from 'child_process';
+import { IS_WINDOWS } from './paths.js';
 
 let httpServer: Server | null = null;
 let serverPid: number | null = null;
@@ -95,11 +96,8 @@ export function startServer(
       serverPid = port;
       notifyStatus(true);
 
-      // 自动打开浏览器
-      const openCmd = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
-      exec(`${openCmd} http://localhost:${port}`, (err) => {
-        // 自动打开浏览器失败，静默忽略，不污染 stdout
-      });
+      // 自动打开浏览器(平台分支,失败静默)
+      void openBrowser(`http://localhost:${port}`);
 
       resolve();
     });
@@ -166,4 +164,33 @@ export function executeWithLogs(
 interface LogEntry {
   level: 'info' | 'warn' | 'error' | 'success';
   message: string;
+}
+
+/**
+ * 跨平台打开 URL:
+ * - Windows: `cmd /c start "" "<url>"`  — start 第一个参数是窗口标题,必须给空串
+ * - macOS:   `open <url>`
+ * - Linux:   `xdg-open <url>`
+ * 失败一律静默,不要把 stderr 抛回 TUI(避免污染 ink 渲染层)
+ */
+function openBrowser(url: string): void {
+  try {
+    let cmd: string;
+    let args: string[];
+    if (IS_WINDOWS) {
+      cmd = 'cmd';
+      args = ['/c', 'start', '""', url];
+    } else if (process.platform === 'darwin') {
+      cmd = 'open';
+      args = [url];
+    } else {
+      cmd = 'xdg-open';
+      args = [url];
+    }
+    const child = spawn(cmd, args, { stdio: 'ignore', detached: true, shell: false });
+    child.on('error', () => { /* 静默 */ });
+    child.unref();
+  } catch {
+    /* 静默 */
+  }
 }

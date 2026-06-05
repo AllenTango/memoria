@@ -4,45 +4,11 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
+import { dirname } from 'path';
 import { execSync } from 'child_process';
+import { findPkgRoot } from './paths.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const PKG_ROOT = path.resolve(dirname(__filename), '..');
-
-function copyDir(src: string, dst: string): void {
-  fs.mkdirSync(dst, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const srcPath = path.join(src, entry.name);
-    const dstPath = path.join(dst, entry.name);
-    if (entry.isDirectory()) {
-      copyDir(srcPath, dstPath);
-    } else {
-      fs.copyFileSync(srcPath, dstPath);
-    }
-  }
-}
-
-/**
- * 定位 memoria 工作区根目录
- */
-function findPkgRoot(): string {
-  const __filename = fileURLToPath(import.meta.url);
-  let currentDir = dirname(__filename);
-  for (let i = 0; i < 10; i++) {
-    const pkgPath = resolve(currentDir, 'package.json');
-    if (fs.existsSync(pkgPath)) {
-      try {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-        if (pkg.name === 'memoria') return currentDir;
-      } catch { /* ignore */ }
-    }
-    const parent = dirname(currentDir);
-    if (parent === currentDir) break;
-    currentDir = parent;
-  }
-  return path.resolve(dirname(__filename), '..');
-}
+const SELF_DIR = dirname(fileURLToPath(import.meta.url));
 
 /**
  * 非交互式初始化（供 TUI 调用）
@@ -64,7 +30,7 @@ export async function initSiteNonInteractive(
     if (onLog) onLog(level, message);
   };
 
-  const PKG = findPkgRoot();
+  const PKG = findPkgRoot(SELF_DIR);
   const TEMPLATE_DIR = path.join(PKG, 'template');
   const THEMES_DIR = path.join(PKG, 'themes');
 
@@ -75,7 +41,9 @@ export async function initSiteNonInteractive(
   }
 
   try {
-    execSync(`cp -r "${TEMPLATE_DIR}/." "${targetDir}"`, { stdio: 'pipe' });
+    // Windows 上没有 `cp` shell 命令,改用 Node 内置 fs.cpSync (Node 16.7+)
+    // 不要用 shell `cp -r`,会因 cmd.exe 找不到 cp 而失败
+    fs.cpSync(TEMPLATE_DIR, targetDir, { recursive: true, force: false, errorOnExist: true });
   } catch (e: any) {
     log('error', `复制模板失败: ${e.message}`);
     return { success: false, error: e.message };
@@ -105,14 +73,21 @@ theme: ${theme}
   const siteThemesDir = path.join(targetDir, 'themes');
   if (fs.existsSync(THEMES_DIR)) {
     log('info', '🎨 复制内置主题到站点...');
-    copyDir(THEMES_DIR, siteThemesDir);
+    // 统一用 fs.cpSync,跨平台一致(不再依赖手写 copyDir)
+    try {
+      fs.cpSync(THEMES_DIR, siteThemesDir, { recursive: true });
+    } catch (e: any) {
+      log('warn', `复制主题失败: ${e.message}`);
+    }
     log('success', '  ✓ dracula, mint, nord, peach');
   }
 
   // 安装依赖
   log('info', '📦 安装依赖...');
   try {
-    execSync('npm install', { cwd: targetDir, stdio: 'pipe' });
+    // Windows 上 npm 实际是 npm.cmd,Node 直接 spawn 'npm' 会 ENOENT
+    // 走 shell:true 让 cmd.exe 处理 PATHEXT 解析
+    execSync('npm install', { cwd: targetDir, stdio: 'pipe', shell: true });
   } catch (e: any) {
     log('error', `npm install 失败: ${e.message}`);
     return { success: false, error: e.message };
@@ -122,9 +97,9 @@ theme: ${theme}
   if (initGit) {
     log('info', '📚 初始化 Git 仓库...');
     try {
-      execSync('git init', { cwd: targetDir, stdio: 'pipe' });
-      execSync('git add .', { cwd: targetDir, stdio: 'pipe' });
-      execSync('git commit -m "Initial commit"', { cwd: targetDir, stdio: 'pipe' });
+      execSync('git init', { cwd: targetDir, stdio: 'pipe', shell: true });
+      execSync('git add .', { cwd: targetDir, stdio: 'pipe', shell: true });
+      execSync('git commit -m "Initial commit"', { cwd: targetDir, stdio: 'pipe', shell: true });
       log('success', '  ✓ Git 仓库已初始化');
     } catch (e: any) {
       log('warn', `Git 初始化跳过: ${e.message}`);

@@ -10,6 +10,7 @@ import { findPkgRoot } from './pkg-root.js';
 import { compileAllContent, compileFile } from '../core/compiler.js';
 import { renderIndex, renderBlogs, renderVlogs, renderPhotos, renderAbout, renderDetail } from '../core/renderer.js';
 import { ensureDir, writeFile, slugify } from '../core/utils.js';
+import { IS_WINDOWS, getHomeDir } from './paths.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -67,8 +68,8 @@ function savedTheme(rootDir: string): string | null {
 }
 
 function resolveThemePath(name: string, siteRoot: string): { type: 'built-in' | 'user' | 'external'; path: string } | null {
-  if (name.startsWith('/') || name.startsWith('~')) {
-    const p = path.resolve(name.replace(/^~/, process.env.HOME || ''));
+  if (name.startsWith('/') || name.startsWith('~') || /^[a-zA-Z]:[\\/]/.test(name)) {
+    const p = path.resolve(name.replace(/^~/, getHomeDir()));
     return fs.existsSync(path.join(p, 'template.html')) ? { type: 'external', path: p } : null;
   }
   const userPath = path.join(siteRoot, 'themes', name);
@@ -198,7 +199,16 @@ export function bundleSite(opts: BuildOptions): BuildResult {
   const zipPath = path.join(opts.rootDir, zipName);
 
   if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
-  execSync(`cd "${result.outputDir}" && zip -r "${zipPath}" .`, { stdio: 'inherit' });
+
+  if (IS_WINDOWS) {
+    // Windows 没有 zip 命令,用 PowerShell 的 Compress-Archive(Win10/11 自带)
+    // 注意:Compress-Archive 只能把单个源目录打包,所以先 cd 进去再打包内容
+    // 解决路径含空格问题:用双引号包裹
+    const psCmd = `Compress-Archive -Path "${result.outputDir}\\*" -DestinationPath "${zipPath}" -Force`;
+    execSync(`powershell -NoProfile -NonInteractive -Command "${psCmd}"`, { stdio: 'inherit', shell: true });
+  } else {
+    execSync(`cd "${result.outputDir}" && zip -r "${zipPath}" .`, { stdio: 'inherit' });
+  }
 
   return result;
 }

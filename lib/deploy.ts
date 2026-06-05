@@ -129,6 +129,12 @@ function deployNetlify(siteDir: string): void {
 
 function getGitRemote(siteDir: string): string | null {
   try {
+    // 用 shell:true 让 Windows 上 git 命令和 stderr 重定向都能正常工作
+    // (Windows cmd 没有 /dev/null,用 2>nul 或者直接静默)
+    if (process.platform === 'win32') {
+      const remote = execSync('git remote get-url origin 2>nul', { cwd: siteDir, encoding: 'utf-8', shell: true });
+      return remote.trim();
+    }
     const remote = execSync('git remote get-url origin 2>/dev/null', { cwd: siteDir, encoding: 'utf-8' });
     return remote.trim();
   } catch {
