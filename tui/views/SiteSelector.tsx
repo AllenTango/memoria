@@ -124,23 +124,23 @@ export function SiteSelector({ serverRunning, onOpenProject, onExit }: Props): R
   );
 
   return (
-    <Layout
-      siteName={undefined}
-      sitePath={undefined}
-      serverRunning={serverRunning}
-      leftPanel={leftPanel}
-      rightPanel={rightPanel}
-      commandInput={
-        <CommandInput
-          isActive={focus === 'input'}
-          onCommand={(cmd) => {
-            // Selector 阶段冇站点相关命令,只处理 /exit / x
-            const bare = cmd.replace(/^\/+/, '').trim();
-            if (bare === 'exit' || bare === 'x') onExit();
-            // 其他命令喺 Selector 阶段无效,CommandInput 内部已经过滤
-          }}
-        />
-      }
-    />
+    <>
+      <Layout
+        siteName={undefined}
+        sitePath={undefined}
+        serverRunning={serverRunning}
+        leftPanel={leftPanel}
+        rightPanel={rightPanel}
+      />
+      <CommandInput
+        isActive={focus === 'input'}
+        onCommand={(cmd) => {
+          // Selector 阶段冇项目相关命令,只处理 /exit / x
+          const bare = cmd.replace(/^\/+/, '').trim();
+          if (bare === 'exit' || bare === 'x') onExit();
+          // 其他命令喺 Selector 阶段无效,CommandInput 内部已经过滤
+        }}
+      />
+    </>
   );
 }

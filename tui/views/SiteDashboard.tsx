@@ -124,20 +124,20 @@ function SiteDashboardImpl({
   );
 
   return (
-    <Layout
-      siteName={siteName}
-      sitePath={currentProject}
-      serverRunning={serverRunning}
-      leftPanel={leftPanel}
-      rightPanel={rightPanel}
-      commandInput={
-        <CommandInput
-          isActive={focus === 'input'}
-          onActiveChange={setCommandActive}
-          onCommand={handleCommand}
-        />
-      }
-    />
+    <>
+      <Layout
+        siteName={siteName}
+        sitePath={currentProject}
+        serverRunning={serverRunning}
+        leftPanel={leftPanel}
+        rightPanel={rightPanel}
+      />
+      <CommandInput
+        isActive={focus === 'input'}
+        onActiveChange={setCommandActive}
+        onCommand={handleCommand}
+      />
+    </>
   );
 }
 

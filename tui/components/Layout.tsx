@@ -1,13 +1,19 @@
 /**
- * Layout — 统一三段式布局:Header + Body(左栏 + 右栏 + 指令输入) + Footer
+ * Layout — 统一三段式布局:Header + Body(左栏 + 右栏) + Footer
  *
  * 关键设计:
  * - 用 useWindowSize 拿 explicit numeric rows/columns,顶层 Box 强制 width/height
  *   (避免 alternateScreen mode 下 fragment 缩到内容高度的 Ink 7 bug)
- * - Header / Footer / 指令输入 都加 flexShrink={0} 防止父级压缩
+ * - 顶层 Box 加 outer border(粉红色),inner content 自动 fill border 内部
+ *   (border 吃 2 行/列,explicit height=rows 时 inner 实际 = rows-2,flexGrow 1 正常 fill)
+ * - Header / Footer 都加 flexShrink={0} 防止被压扁
  * - Body flexGrow={1} 填满剩余空间
- * - Body 内部 top row(左栏 + 右栏)flexGrow={1},bottom row(指令输入)flexShrink={0}
+ * - Body 内部 top row(左栏 + 右栏)flexGrow={1}
  * - 左栏固定 30%(24-40 columns),右栏 flexGrow={1} 吃剩余
+ *
+ * **CommandInput 不在此组件内** — 它用 position="absolute" 浮层,
+ *   必须放在 view 顶层 Fragment(同 Layout 兄弟节点),否则在 alternateScreen
+ *   mode 下 absolute 定位会失效,fallback 到占据 flow 空间
  *
  * 由 SiteSelector / SiteDashboard 各自传入 leftPanel / rightPanel 内容
  * (它们各自维护 mode 状态,Layout 不知道 mode)
@@ -22,8 +28,6 @@ interface LayoutProps {
   leftPanel: React.ReactNode;
   /** 右栏内容(由 view 决定,根据 mode 切换 panel) */
   rightPanel: React.ReactNode;
-  /** 底部指令输入条(可选;Selector 也支持命令面板) */
-  commandInput?: React.ReactNode;
   /** Header 站点名(未打开站点时为 undefined) */
   siteName?: string;
   /** Header 站点路径 */
@@ -35,7 +39,6 @@ interface LayoutProps {
 export function Layout({
   leftPanel,
   rightPanel,
-  commandInput,
   siteName,
   sitePath,
   serverRunning,
@@ -57,13 +60,13 @@ export function Layout({
     <Box
       width={safeCols}
       height={safeRows}
+      borderStyle="round"
+      borderColor={C.pink}
       flexDirection="column"
     >
       {/* ── Header(顶栏) ───────────────────────────────────── */}
       <Box
         flexShrink={0}
-        borderStyle="round"
-        borderColor={C.pink}
         paddingX={1}
         flexDirection="row"
         justifyContent="space-between"
@@ -106,13 +109,6 @@ export function Layout({
             {rightPanel}
           </Box>
         </Box>
-
-        {/* Bottom row: 指令输入(可选) */}
-        {commandInput && (
-          <Box flexShrink={0} marginTop={1}>
-            {commandInput}
-          </Box>
-        )}
       </Box>
 
       {/* ── Footer(底栏 StatusBar) ────────────────────────── */}

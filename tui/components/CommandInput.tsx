@@ -42,6 +42,11 @@ export function CommandInput({ onCommand, onActiveChange, isActive = true }: Com
   const [selected, setSelected] = useState(INITIAL_STATE.selected);
   const [showHints, setShowHintsState] = useState(INITIAL_STATE.showHints);
 
+  // 关键:isActive 用 ref 镜像,useInput 嘅 useCallback 不依赖 isActive
+  // (避免 isActive 改变时 useCallback 重新 create,导致 useInput 重新 subscribe 丢 keypress)
+  const isActiveRef = useRef(isActive);
+  useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
+
   // 派生列表
   const filtered = useMemo(
     () => filterCommands(ALL_COMMANDS as CommandItem[], input, showHints),
@@ -100,10 +105,10 @@ export function CommandInput({ onCommand, onActiveChange, isActive = true }: Com
     }
   }, []);
 
-  // ── 稳定的 handler(空依赖) ──
+  // ── 稳定的 handler(isActive 不在 deps,用 isActiveRef 守) ──
   const handleInput = useCallback((inp: string, key: HandlerKey) => {
     // 焦点不在命令面板时,只接 `/`(激活命令面板),其他键让出给左/右栏
-    if (!isActive) {
+    if (!isActiveRef.current) {
       if (inp === '/') {
         setShowHints(true);
         setSelectedSync(0);
@@ -124,7 +129,8 @@ export function CommandInput({ onCommand, onActiveChange, isActive = true }: Com
     setInput(result.next.input);
     setShowHints(result.next.showHints);
     setSelectedSync(result.next.selected);
-  }, [isActive, onCommand, setInput, setShowHints, setSelectedSync]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onCommand, setInput, setShowHints, setSelectedSync]);
 
   useInput(handleInput);
 
