@@ -112,11 +112,11 @@ export function Layout({
       <Box flexGrow={1} flexShrink={0} flexDirection="column" marginTop={1}>
         {/* Top row: 左栏 + 右栏(横排) */}
         <Box flexGrow={1} flexShrink={0} flexDirection="row">
-          {/* 左栏 — 固定 30%(24-40 columns) */}
+          {/* 左栏 — 固定 40%(28-50 columns) */}
           <Box
-            width="30%"
-            minWidth={24}
-            maxWidth={40}
+            width="40%"
+            minWidth={28}
+            maxWidth={50}
             flexShrink={0}
             borderStyle="round"
             borderColor={C.cyan}

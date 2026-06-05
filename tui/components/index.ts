@@ -9,4 +9,3 @@ export { BlinkingCursor } from './BlinkingCursor';
 export { ConfirmBox } from './ConfirmBox';
 export { FileTree } from './FileTree';
 export { DetailPanel, LogView, type LogEntry } from './DetailPanel';
-export { CommandInput } from './CommandInput';

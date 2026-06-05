@@ -10,6 +10,8 @@ export interface LogEntry {
   timestamp: number;
   level: 'info' | 'warn' | 'error' | 'success';
   message: string;
+  /** 关联的指令名(app.tsx 嘅 onCommand 传入),用于 SiteDashboard 按 cmd filter logs */
+  command?: string;
 }
 
 // 渲染时只保留末尾 N 条,避免长会话下 Box/Text 节点线性增长导致渲染卡顿
