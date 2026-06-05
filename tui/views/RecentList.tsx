@@ -1,7 +1,9 @@
 /**
  * RecentList — recent projects list (Layout版)
+ *
+ * 键盘: ↑/↓ 移动,Enter 触发(打开项目 / 浏览目录 / 返回),Esc 返回
  */
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Box, useInput, useWindowSize } from 'ink';
 import { Layout } from '../components/Layout';
 import { SelectableList } from '../components';
@@ -24,17 +26,31 @@ interface Props {
 export function RecentList({ recents, onSelect, onBack, onBrowse, serverRunning }: Props): React.ReactElement {
   const { rows } = useWindowSize();
   const [selected, setSelected] = useState(0);
-  const totalItems = recents.length + 2;
+  const selectedRef = useRef(selected);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
 
-  useInput((_, key) => {
-    if (key.upArrow) setSelected((s: number) => Math.max(0, s - 1));
-    else if (key.downArrow) setSelected((s: number) => Math.min(totalItems - 1, s + 1));
-    else if (key.return) {
-      if (selected < recents.length) onSelect(recents[selected].root);
-      else if (selected === recents.length) onBrowse();
-      else onBack();
-    } else if (key.escape) onBack();
-  });
+  // items 数量 = recents + 1(浏览目录),不要多加 1
+  const totalItems = recents.length + 1;
+  // 项目索引范围: [0, recents.length)  → onSelect
+  // "浏览目录"索引: recents.length     → onBrowse
+  // 没有"返回"项(用 Esc 即可)
+
+  // ref 镜像 setSelected,避免 stale closure
+  const handleInput = useCallback((_inp: string, key: { upArrow?: boolean; downArrow?: boolean; return?: boolean; escape?: boolean }) => {
+    if (key.upArrow) {
+      setSelected(s => Math.max(0, s - 1));
+    } else if (key.downArrow) {
+      setSelected(s => Math.min(totalItems - 1, s + 1));
+    } else if (key.return) {
+      const cur = selectedRef.current;
+      if (cur < recents.length) onSelect(recents[cur].root);
+      else if (cur === recents.length) onBrowse();
+    } else if (key.escape) {
+      onBack();
+    }
+  }, [totalItems, recents, onSelect, onBrowse, onBack]);
+
+  useInput(handleInput);
 
   const items = [
     ...recents.map(r => {
@@ -49,7 +65,7 @@ export function RecentList({ recents, onSelect, onBack, onBrowse, serverRunning 
     <Layout
       siteName="最近项目"
       sitePath=""
-      height={rows} 
+      height={rows}
       serverRunning={serverRunning}
     >
       <Box flexDirection="column" justifyContent="center" alignItems="center"  flexGrow={1}>

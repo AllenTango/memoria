@@ -4,3 +4,4 @@ dist/
 *.log
 dist-lib/
 tests/fixtures/
+test-site1/

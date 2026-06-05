@@ -3,7 +3,7 @@
  * Layout: Header + Sidebar(30%) + Detail(70%) + StatusBar
  * 状态：Selector(站点选择) ↔ Dashboard(站点管理)
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { render, useInput, useApp } from 'ink';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -24,6 +24,9 @@ import {
   SiteSelector,
   SiteDashboard,
 } from './views';
+
+// 日志保留条数上限,超过后丢弃最早条数,避免长会话累积导致渲染卡顿
+const LOG_CAP = 200;
 
 // ── 类型 ──────────────────────────────────────────────
 
@@ -64,7 +67,23 @@ function App(): React.ReactElement {
   // Server 状态
   const [serverRunning, setServerRunning] = useState(false);
 
-  const recents = getRecentProjects().slice(0, 5);
+  // 缓存:home 目录解析/读盘只在 currentProject/screen 切换时重做,避免每帧都重读 recent.json
+  const recents = useMemo(() => {
+    // 仅在站点选择相关页面才需要读最近项目
+    if (screen !== 'main' && screen !== 'open' && screen !== 'browse') return [] as ReturnType<typeof getRecentProjects>;
+    return getRecentProjects().slice(0, 5);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, currentProject]);
+
+  // ── Ref 镜像 ──
+  // 把高频回调(handleCommand / useInput 等)依赖的几个 state 镜像到 ref,
+  // 这样回调本身可以保持稳定引用,避免下游 React.memo 组件被无效重渲染。
+  const currentProjectRef = useRef<string | null>(null);
+  const screenRef = useRef<Screen>('main');
+  const confirmTargetRef = useRef<typeof confirmTarget>(null);
+  useEffect(() => { currentProjectRef.current = currentProject; }, [currentProject]);
+  useEffect(() => { screenRef.current = screen; }, [screen]);
+  useEffect(() => { confirmTargetRef.current = confirmTarget; }, [confirmTarget]);
 
   // ── 文件元数据加载 ──────────────────────────────────
 
@@ -110,7 +129,11 @@ function App(): React.ReactElement {
   // ── 日志操作 ────────────────────────────────────────
 
   const appendLog = useCallback((level: LogEntry['level'], message: string) => {
-    setLogs(prev => [...prev, { timestamp: Date.now(), level, message }]);
+    setLogs(prev => {
+      const next = prev.length >= LOG_CAP ? prev.slice(prev.length - LOG_CAP + 1) : prev.slice();
+      next.push({ timestamp: Date.now(), level, message });
+      return next;
+    });
   }, []);
 
   const clearLogs = useCallback(() => {
@@ -147,27 +170,26 @@ function App(): React.ReactElement {
   }, [appendLog]);
 
   // ── 键盘输入 ───────────────────────────────────────
-
-  useInput((input, key) => {
+  // 全局快捷键 handler:用 useCallback 稳定 + ref 拿最新 state,避免 useInput 频繁 unregister/register
+  const handleGlobalInput = useCallback((input: string, key: { ctrl?: boolean }) => {
     // 命令面板开启时忽略其他输入
-    if (confirmTarget) return;
+    if (confirmTargetRef.current) return;
 
     // 全局快捷键
     if (key.ctrl && input === 'c') { doExit(); return; }
 
-    if (screen === 'main' && currentProject) {
-      if (input === 'x' || input === 'X') {
-        doExit();
-        return;
-      }
+    const s = screenRef.current;
+    const proj = currentProjectRef.current;
+    if (s === 'main' && proj) {
+      if (input === 'x' || input === 'X') { doExit(); return; }
     }
-
-    if (screen === 'main' && !currentProject) {
+    if (s === 'main' && !proj) {
       if (input === 'c' || input === 'C') { setScreen('create'); return; }
       if (input === 'o' || input === 'O') { setScreen('open'); return; }
       if (input === 'x' || input === 'X') { doExit(); return; }
     }
-  });
+  }, []);
+  useInput(handleGlobalInput);
 
   // ── 项目操作 ────────────────────────────────────────
 
@@ -183,7 +205,14 @@ function App(): React.ReactElement {
   }
 
   async function handleStartServer(): Promise<void> {
-    if (!currentProject) return;
+    // 关键:从 ref 拿最新 currentProject,而不是闭包 React state
+    // (因为 handleCommand 是 useCallback([]),executeCmd 内的 server 任务
+    //  捕获的是 mount 时的 handleStartServer,闭包 currentProject=null)
+    const project = currentProjectRef.current;
+    if (!project) {
+      setFeedback({ type: 'err', msg: '✗ 项目未打开' });
+      return;
+    }
     if (isServerRunning()) {
       setFeedback({ type: 'warn', msg: '⚠ 服务器已在运行' });
       return;
@@ -195,7 +224,7 @@ function App(): React.ReactElement {
     appendLog('info', '正在构建站点...');
 
     try {
-      await startServer(currentProject, 3000, appendLog);
+      await startServer(project, 3000, appendLog);
       setServerRunning(true);
       appendLog('success', '🌐 预览服务器已启动 http://localhost:3000');
       setFeedback({ type: 'ok', msg: '✓ 服务器已启动' });
@@ -225,38 +254,39 @@ function App(): React.ReactElement {
   }
 
   async function executeCmd(cmd: string): Promise<void> {
-    if (!currentProject) return;
+    // 用 ref 拿最新 project,避免 stale closure(因为本函数被 useCallback 的 handleCommand 调用)
+    const project = currentProjectRef.current;
+    if (!project) return;
     setConfirmTarget(null);
 
     const tasks: Record<string, () => Promise<void>> = {
-          generate: showLogsForCommand('/generate', async () => {
-            appendLog('info', '开始构建站点...');
-            const result = buildSite({ rootDir: currentProject });
-            if (result.success) {
-              appendLog('success', `✓ 构建完成 (${result.stats?.blogs} blogs, ${result.stats?.vlogs} vlogs, ${result.stats?.photos} photos)`);
-              setFeedback({ type: 'ok', msg: `✓ 构建完成` });
-            } else {
-              result.errors.forEach(e => appendLog('error', e));
-              setFeedback({ type: 'err', msg: `✗ 构建失败` });
-            }
-          }),
-          bundle: showLogsForCommand('/bundle', async () => {
-            appendLog('info', '开始打包站点...');
-            const result = bundleSite({ rootDir: currentProject });
-            if (result.success) {
-              appendLog('success', '✓ 打包完成');
-              setFeedback({ type: 'ok', msg: '✓ 打包完成' });
-            } else {
-              result.errors.forEach(e => appendLog('error', e));
-              setFeedback({ type: 'err', msg: `✗ 打包失败` });
-            }
-          }),
-          server: async () => { await handleStartServer(); },
-          stop: async () => { await handleStopServer(); },
-          open: async () => {
-        if (!currentProject) return;
+      generate: showLogsForCommand('/generate', async () => {
+        appendLog('info', '开始构建站点...');
+        const result = buildSite({ rootDir: project });
+        if (result.success) {
+          appendLog('success', `✓ 构建完成 (${result.stats?.blogs} blogs, ${result.stats?.vlogs} vlogs, ${result.stats?.photos} photos)`);
+          setFeedback({ type: 'ok', msg: `✓ 构建完成` });
+        } else {
+          result.errors.forEach(e => appendLog('error', e));
+          setFeedback({ type: 'err', msg: `✗ 构建失败` });
+        }
+      }),
+      bundle: showLogsForCommand('/bundle', async () => {
+        appendLog('info', '开始打包站点...');
+        const result = bundleSite({ rootDir: project });
+        if (result.success) {
+          appendLog('success', '✓ 打包完成');
+          setFeedback({ type: 'ok', msg: '✓ 打包完成' });
+        } else {
+          result.errors.forEach(e => appendLog('error', e));
+          setFeedback({ type: 'err', msg: `✗ 打包失败` });
+        }
+      }),
+      server: async () => { await handleStartServer(); },
+      stop: async () => { await handleStopServer(); },
+      open: async () => {
         try {
-          await openDir(currentProject);
+          await openDir(project);
           appendLog('success', `✓ 已在文件管理器中打开项目目录`);
           setFeedback({ type: 'ok', msg: '✓ 已在文件管理器中打开' });
         } catch (err) {
@@ -273,24 +303,25 @@ function App(): React.ReactElement {
     if (task) await task();
   }
 
-  function handleCommand(input: string): void {
+  const handleCommand = useCallback((input: string): void => {
     const c = input.trim();
     if (!c) return;
     const bare = c.replace(/^\/+/, '');
+    const project = currentProjectRef.current;
     if (['generate', 'bundle', 'deploy', 'open', 'server', 'stop'].includes(bare)) {
-      if (!currentProject) {
+      if (!project) {
         setFeedback({ type: 'warn', msg: '⚠ 请先打开一个项目' });
         return;
       }
       void executeCmd(bare);
     } else if (bare === 'theme') {
-      if (!currentProject) {
+      if (!project) {
         setFeedback({ type: 'warn', msg: '⚠ 请先打开一个项目' });
         return;
       }
       setScreen('theme');
     } else if (bare === 'new') {
-      if (!currentProject) {
+      if (!project) {
         setFeedback({ type: 'warn', msg: '⚠ 请先打开一个项目' });
         return;
       }
@@ -298,12 +329,13 @@ function App(): React.ReactElement {
     } else {
       setFeedback({ type: 'err', msg: `✗ 未知命令: ${c}` });
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── 文件树回调 ────────────────────────────────────
 
   const handleFileSelect = useCallback(async (filePath: string) => {
-    if (!currentProject) return;
+    if (!currentProjectRef.current) return;
     setSelectedFilePath(filePath);
     loadFileMetadata(filePath);
     setDetailMode('metadata');
@@ -322,7 +354,8 @@ function App(): React.ReactElement {
         setFeedback({ type: 'err', msg: `✗ 无法启动编辑器` });
       }
     }
-  }, [currentProject, loadFileMetadata, appendLog]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadFileMetadata, appendLog]);
 
   // ── 退出 ──────────────────────────────────────────
 
