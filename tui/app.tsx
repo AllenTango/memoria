@@ -182,11 +182,6 @@ async function executeCmd(
     appendLog('warn', '⚠ deploy 功能开发中', 'deploy');
     return;
   }
-
-  if (cmd === 'syncTheme') {
-    appendLog('warn', '⚠ syncTheme 功能开发中', 'syncTheme');
-    return;
-  }
 }
 
 // ── 暴露给 CLI 入口 ──

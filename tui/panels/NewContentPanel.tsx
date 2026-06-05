@@ -163,13 +163,33 @@ export function NewContentPanel({ isActive, projectRoot, onComplete, onCancel }:
   // ── step 3:成功 ──
   const t = CONTENT_TYPES.find(x => x.key === type)!;
   return (
-    <Box flexDirection="column" flexGrow={1} justifyContent="center" alignItems="center">
+    <Box flexDirection="column" flexGrow={1} justifyContent="center" alignItems="center" width="100%">
       <Text color={C.green} bold>✓ 内容创建完成</Text>
       <Text dimColor>{t.emoji} {t.label}</Text>
-      {resultPath && <Text dimColor wrap="truncate">{resultPath}</Text>}
+      {resultPath && (
+        <Box width="100%" flexDirection="column" alignItems="center">
+          {/* truncate 路径过长(保留文件名 + 部分父目录),避免溢出右栏 */}
+          <Text dimColor wrap="truncate">{truncatePath(resultPath, 50)}</Text>
+        </Box>
+      )}
       <Box marginTop={1}>
         <Text dimColor>Enter 确认 · Esc 关闭</Text>
       </Box>
     </Box>
   );
+}
+
+/**
+ * 路径截断:保留文件名 + 父目录尾部,过长时前缀 '...'
+ * - 短路径(< maxLen):原样返回
+ * - 长路径:截取尾部 maxLen-3 字符,前缀 '...'
+ * - 文件名本身 > maxLen-3:仅保留文件名尾部
+ */
+function truncatePath(p: string, maxLen: number): string {
+  if (p.length <= maxLen) return p;
+  const basename = p.split(/[/\\]/).pop() || p;
+  if (basename.length >= maxLen - 3) {
+    return '...' + basename.slice(-(maxLen - 3));
+  }
+  return '...' + p.slice(-(maxLen - 3));
 }

@@ -101,14 +101,14 @@ function FileTreeImpl({ rootDir, inputPaused = false }: FileTreeProps): React.Re
   const flatNodes = useMemo(() => flattenTree(treeData), [treeData]);
   const visibleCount = TREE_ROWS - 4; // 留2行指示器
 
-  useInput((input) => {
+  useInput((input, key) => {
     // 命令面板开启时让出键盘焦点,避免和 j/k 滚动冲突
     if (inputPaused) return;
 
-    // 只支持 j/k 上下浏览(其他键一律不响应)
-    if (input === 'j') {
+    // 支持 j/k (vim 风格) + ↑/↓ (方向键) 上下浏览(其他键一律不响应)
+    if (input === 'j' || key.downArrow) {
       setScrollOffset(prev => Math.min(Math.max(0, flatNodes.length - visibleCount), prev + 1));
-    } else if (input === 'k') {
+    } else if (input === 'k' || key.upArrow) {
       setScrollOffset(prev => Math.max(0, prev - 1));
     }
   });

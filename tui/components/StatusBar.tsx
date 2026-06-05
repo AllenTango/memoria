@@ -25,9 +25,9 @@ export function StatusBar({ serverRunning, shortcuts }: StatusBarProps): React.R
   const items = shortcuts || defaultShortcuts;
 
   return (
+    // **去掉 borderStyle="round"** — border 吃 2 列(左右),与 Header(无 border)差 2 列
+    // 视觉上保留 server 状态高亮 + 快捷键颜色对比,无需 border 隔
     <Box
-      borderStyle="round"
-      borderColor={C.muted}
       paddingX={1}
       flexDirection="column"
     >

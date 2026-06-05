@@ -29,7 +29,7 @@ import { C } from '../contexts/TUIContext';
 import { getProjectName } from '../../lib/recent';
 import { type LogEntry } from '../components/DetailPanel';
 
-type InteractiveMode = 'overview' | 'newContent' | 'theme' | 'newTheme';
+type InteractiveMode = 'overview' | 'newContent' | 'theme';
 type Focus = 'menu' | 'form';
 
 interface Props {
@@ -66,7 +66,8 @@ export function SiteDashboard({
   useEffect(() => { focusRef.current = focus; }, [focus]);
   useEffect(() => { serverRunningRef.current = serverRunning; }, [serverRunning]);
 
-  // ── 菜单项定义(11 项,带互斥 dim) ──
+  // ── 菜单项定义(9 项,带互斥 dim) ──
+  // "新建主题" + "同步系统主题" 移至"主题"指令的 sub-mode 内(ThemePanel 入面 ↑/↓ 切换 3 个 sub-mode)
   const menuItems: MenuItem[] = useMemo(() => [
     { cmd: 'overview',   label: '站点总览',          hint: '资源树',         color: C.cyan,    type: 'interactive' },
     { cmd: 'openDir',    label: '在文件夹管理器中打开', hint: '系统资源管理器', color: C.cyan,    type: 'executable' },
@@ -74,11 +75,9 @@ export function SiteDashboard({
     { cmd: 'stop',       label: '停止预览服务',      hint: '/stop',          color: C.red,     type: 'executable', disabled: !serverRunning },
     { cmd: 'generate',   label: '构建内容',          hint: '/generate',      color: C.orange,  type: 'executable' },
     { cmd: 'new',        label: '新建内容',          hint: '随笔/影像/相册',  color: C.green,   type: 'interactive' },
-    { cmd: 'theme',      label: '主题切换',          hint: '/theme',         color: C.purple,  type: 'interactive' },
-    { cmd: 'newTheme',   label: '新建主题',          hint: '开发中',         color: C.purple,  type: 'interactive' },
+    { cmd: 'theme',      label: '主题',              hint: '应用/新建/同步',  color: C.purple,  type: 'interactive' },
     { cmd: 'bundle',     label: '构建 + 打包',       hint: '/bundle',        color: C.yellow,  type: 'executable' },
     { cmd: 'deploy',     label: '部署',              hint: '/deploy',        color: C.green,   type: 'executable' },
-    { cmd: 'syncTheme',  label: '同步系统主题',      hint: '开发中',         color: C.pink,    type: 'executable' },
   ], [serverRunning]);
 
   // ── Menu Enter 触发 ──
@@ -103,9 +102,6 @@ export function SiteDashboard({
       setFocus('form');
     } else if (cmd === 'theme') {
       setInteractiveMode('theme');
-      setFocus('form');
-    } else if (cmd === 'newTheme') {
-      setInteractiveMode('newTheme');
       setFocus('form');
     }
   }, [menuItems, onCommand]);
@@ -162,10 +158,11 @@ export function SiteDashboard({
         <Box flexDirection="column" flexGrow={1}>
           <Text bold color={C.cyan}>· 站点总览 (资源树)</Text>
           <Box flexDirection="column" flexGrow={1} marginTop={1}>
-            <FileTree rootDir={currentProject} inputPaused={true} />
+            {/* inputPaused = focus !== 'form':用户进入 overview form 时 FileTree 接受 ↑/↓ 滚动 */}
+            <FileTree rootDir={currentProject} inputPaused={focus !== 'form'} />
           </Box>
           <Box marginTop={1}>
-            <Text dimColor>Esc 退到指令菜单</Text>
+            <Text dimColor>↑↓ 滚动 · Esc 退到指令菜单</Text>
           </Box>
         </Box>
       );
@@ -180,19 +177,8 @@ export function SiteDashboard({
         />
       );
     }
-    if (interactiveMode === 'theme' || interactiveMode === 'newTheme') {
-      // 'newTheme' 占位 — 显示"开发中"
-      if (interactiveMode === 'newTheme') {
-        return (
-          <Box flexDirection="column" flexGrow={1} justifyContent="center" alignItems="center">
-            <Text color={C.muted}>新建主题功能开发中</Text>
-            <Text dimColor>暂用主题切换指令(应用已有主题)</Text>
-            <Box marginTop={1}>
-              <Text dimColor>Esc 退到指令菜单</Text>
-            </Box>
-          </Box>
-        );
-      }
+    if (interactiveMode === 'theme') {
+      // ThemePanel 内部 3 sub-mode(应用/新建/同步),↑/↓ 切
       return (
         <ThemePanel
           isActive={focus === 'form'}
