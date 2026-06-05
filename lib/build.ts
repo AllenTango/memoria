@@ -205,7 +205,7 @@ export function bundleSite(opts: BuildOptions): BuildResult {
     // 注意:Compress-Archive 只能把单个源目录打包,所以先 cd 进去再打包内容
     // 解决路径含空格问题:用双引号包裹
     const psCmd = `Compress-Archive -Path "${result.outputDir}\\*" -DestinationPath "${zipPath}" -Force`;
-    execSync(`powershell -NoProfile -NonInteractive -Command "${psCmd}"`, { stdio: 'inherit', shell: true });
+    execSync(`powershell -NoProfile -NonInteractive -Command "${psCmd}"`, { stdio: 'inherit', shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/sh' });
   } else {
     execSync(`cd "${result.outputDir}" && zip -r "${zipPath}" .`, { stdio: 'inherit' });
   }

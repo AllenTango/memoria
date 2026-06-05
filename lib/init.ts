@@ -87,7 +87,7 @@ theme: ${theme}
   try {
     // Windows 上 npm 实际是 npm.cmd,Node 直接 spawn 'npm' 会 ENOENT
     // 走 shell:true 让 cmd.exe 处理 PATHEXT 解析
-    execSync('npm install', { cwd: targetDir, stdio: 'pipe', shell: true });
+    execSync('npm install', { cwd: targetDir, stdio: 'pipe', shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/sh' });
   } catch (e: any) {
     log('error', `npm install 失败: ${e.message}`);
     return { success: false, error: e.message };
@@ -97,9 +97,10 @@ theme: ${theme}
   if (initGit) {
     log('info', '📚 初始化 Git 仓库...');
     try {
-      execSync('git init', { cwd: targetDir, stdio: 'pipe', shell: true });
-      execSync('git add .', { cwd: targetDir, stdio: 'pipe', shell: true });
-      execSync('git commit -m "Initial commit"', { cwd: targetDir, stdio: 'pipe', shell: true });
+      const gitShell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
+      execSync('git init', { cwd: targetDir, stdio: 'pipe', shell: gitShell });
+      execSync('git add .', { cwd: targetDir, stdio: 'pipe', shell: gitShell });
+      execSync('git commit -m "Initial commit"', { cwd: targetDir, stdio: 'pipe', shell: gitShell });
       log('success', '  ✓ Git 仓库已初始化');
     } catch (e: any) {
       log('warn', `Git 初始化跳过: ${e.message}`);

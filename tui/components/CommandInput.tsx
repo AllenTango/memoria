@@ -28,11 +28,16 @@ import { ALL_COMMANDS, type CommandItem } from './commandItems';
 interface CommandInputProps {
   onCommand: (cmd: string) => void;
   onActiveChange?: (active: boolean) => void;
-  /** 容器高度(用于 absolute 定位计算) */
-  height?: number;
+  /**
+   * 父级焦点控制:
+   * - true:正常监听所有按键(用户正在命令面板输入)
+   * - false:只监听 `/`(激活命令面板),其他按键 return 让出
+   *   给左/右栏的 panel(避免多 useInput 冲突)
+   */
+  isActive?: boolean;
 }
 
-export function CommandInput({ onCommand, onActiveChange }: CommandInputProps): React.ReactElement {
+export function CommandInput({ onCommand, onActiveChange, isActive = true }: CommandInputProps): React.ReactElement {
   const [input, setInputState] = useState(INITIAL_STATE.input);
   const [selected, setSelected] = useState(INITIAL_STATE.selected);
   const [showHints, setShowHintsState] = useState(INITIAL_STATE.showHints);
@@ -97,6 +102,14 @@ export function CommandInput({ onCommand, onActiveChange }: CommandInputProps): 
 
   // ── 稳定的 handler(空依赖) ──
   const handleInput = useCallback((inp: string, key: HandlerKey) => {
+    // 焦点不在命令面板时,只接 `/`(激活命令面板),其他键让出给左/右栏
+    if (!isActive) {
+      if (inp === '/') {
+        setShowHints(true);
+        setSelectedSync(0);
+      }
+      return;
+    }
     if (inp === 'j' || inp === 'k') {
       return; // 留给 FileTree
     }
@@ -111,7 +124,7 @@ export function CommandInput({ onCommand, onActiveChange }: CommandInputProps): 
     setInput(result.next.input);
     setShowHints(result.next.showHints);
     setSelectedSync(result.next.selected);
-  }, [onCommand, setInput, setShowHints, setSelectedSync]);
+  }, [isActive, onCommand, setInput, setShowHints, setSelectedSync]);
 
   useInput(handleInput);
 
