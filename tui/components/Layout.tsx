@@ -2,11 +2,13 @@
  * Layout — 统一三段式布局:Header + Body(左栏 + 右栏) + Footer
  *
  * 关键设计:
- * - 顶层 Box 用 `flexGrow=1 flexShrink=0`,靠 alternateScreen mode 自动 fill viewport
- *   **避免 `width={safeCols} height={safeRows}` + outer border 互冲**
- *   (useWindowSize 喺 alternateScreen 下 height detection 失效,safeRows fallback 40,
- *    outer border 吃 2 行,Layout 实际只剩 38 行,Header 被压扁)
+ * - 顶层 Box 用 `width={safeCols} height={safeRows}`(custom useViewportSize 同步拿)
+ *   **必须 explicit numeric** — Ink 7 alternateScreen 模式下 Fragment 顶层 Ink root
+ *   嘅 height = content height(auto),`flexGrow=1` fill 0,Layout 缩到内容高度
+ *   (顶部 ~50% viewport 全黑就系呢个原因)
+ * - useViewportSize 用 useStdout 同步 initial(避免 useWindowSize 嘅 0 issue)
  * - 顶层 Box 加 outer border(粉红色),inner content 靠 flexGrow=1 fill border 内部
+ *   (height={safeRows} 系 outer height,border 吃 2 行,inner area = safeRows - 2)
  * - Header / Footer 都加 flexShrink={0} 防止被压扁
  * - Body flexGrow={1} 填满剩余空间
  * - Body 内部 top row(左栏 + 右栏)flexGrow={1}
@@ -19,10 +21,33 @@
  * 由 SiteSelector / SiteDashboard 各自传入 leftPanel / rightPanel 内容
  * (它们各自维护 mode 状态,Layout 不知道 mode)
  */
-import React, { useMemo } from 'react';
-import { Box, Text, useWindowSize } from 'ink';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Box, Text, useStdout } from 'ink';
 import { C } from '../contexts/TUIContext';
 import { StatusBar } from './StatusBar';
+
+/**
+ * 同步从 useStdout 拿 size + 监听 resize re-render
+ * - 关键:initial state lazy 同步从 stdout.columns/rows 拿(避免 useWindowSize 嘅异步 setState issue)
+ * - fallback 80x24(terminal 最小 size,而非 useWindowSize 嘅 80x24 fallback)
+ * - resize 监听让 user resize terminal 时 Layout 重新 render
+ */
+function useViewportSize(): { columns: number; rows: number } {
+  const { stdout } = useStdout();
+  const [size, setSize] = useState(() => ({
+    columns: stdout.columns > 0 ? stdout.columns : 80,
+    rows: stdout.rows > 0 ? stdout.rows : 24,
+  }));
+  useEffect(() => {
+    const onResize = () => setSize({
+      columns: stdout.columns > 0 ? stdout.columns : 80,
+      rows: stdout.rows > 0 ? stdout.rows : 24,
+    });
+    stdout.on('resize', onResize);
+    return () => { stdout.off('resize', onResize); };
+  }, [stdout]);
+  return size;
+}
 
 interface LayoutProps {
   /** 左栏内容(由 view 决定,例如 SiteSelector 的操作菜单 / SiteDashboard 的 FileTree) */
@@ -44,10 +69,8 @@ export function Layout({
   sitePath,
   serverRunning,
 }: LayoutProps): React.ReactElement {
-  // 用 useWindowSize 拿 explicit numeric columns,做响应式 header 内容
-  // (避免 path 太长时 Header overflow)
-  const { columns } = useWindowSize();
-  const safeCols = columns > 0 ? columns : 120;
+  // 同步从 useStdout 拿 size(避免 useWindowSize 首次 render 拿 0 嘅 issue)
+  const { columns: safeCols, rows: safeRows } = useViewportSize();
 
   // 日期只在分钟级变化,useMemo + mount 时算一次即可
   const dateStr = useMemo(() => {
@@ -58,8 +81,9 @@ export function Layout({
 
   return (
     <Box
+      width={safeCols}
+      height={safeRows}
       flexDirection="column"
-      flexGrow={1}
       flexShrink={0}
       borderStyle="round"
       borderColor={C.pink}

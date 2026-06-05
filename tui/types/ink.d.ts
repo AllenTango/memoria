@@ -88,6 +88,16 @@ declare module 'ink' {
   }
   export function useWindowSize(): WindowSize;
 
+  // useStdout 用于直接同步拿 stdout 嘅 size(columns/rows),避开 useWindowSize 首次 render 拿 0 嘅 issue
+  export interface Stdout {
+    columns: number;
+    rows: number;
+    on(event: 'resize', listener: () => void): void;
+    off(event: 'resize', listener: () => void): void;
+    write(data: string): boolean;
+  }
+  export function useStdout(): { stdout: Stdout };
+
   export function useApp(): { exit: () => void };
 
   export default function render(
