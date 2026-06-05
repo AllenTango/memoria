@@ -7,7 +7,7 @@
     "memoria": "dist/cli.js"
   },
   "scripts": {
-    "bundle": "esbuild bin/memoria.ts --bundle --platform=node --format=esm --target=node18 --outfile=dist/cli.js --banner:js=\"#!/usr/bin/env node\" --jsx=automatic --jsx-import-source=react --external:react --external:ink --external:react-devtools-core --external:gray-matter --external:highlight.js --external:marked --external:prompts",
+    "bundle": "esbuild bin/cli.ts bin/cli-tui.ts --bundle --platform=node --format=esm --target=node18 --splitting --outdir=dist --entry-names=[name] --chunk-names=chunks/[name]-[hash] --banner:js=\"#!/usr/bin/env node\" --jsx=automatic --jsx-import-source=react --external:react --external:ink --external:react-devtools-core --external:gray-matter --external:highlight.js --external:marked --external:prompts",
     "build": "npm run bundle"
   },
   "keywords": [
@@ -31,6 +31,7 @@
   "devDependencies": {
     "@types/node": "^25.9.1",
     "esbuild": "^0.28.0",
+    "ink-testing-library": "^2.1.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"
   }
