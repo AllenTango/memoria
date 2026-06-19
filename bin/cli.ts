@@ -225,11 +225,6 @@ async function runCliCommand(cmd: string, restArgs: string[]): Promise<void> {
 
     case 'clean': {
       const distDir = path.join(cwd, 'dist');
-      // 防止误删 memoria 项目自身的 dist/（里面装着 memoria 命令本身）
-      if (path.resolve(cwd) === path.resolve(selfDir(), '..')) {
-        console.error('❌ 禁止删除 memoria 项目自己的 dist/ 目录');
-        process.exit(1);
-      }
       if (!fs.existsSync(distDir)) {
         console.log('✅ dist/ 目录不存在，无需清理');
         break;
