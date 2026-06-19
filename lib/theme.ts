@@ -4,11 +4,12 @@
  * - Create new theme scaffold
  * - Preview theme colors
  */
-import * as fs from 'fs';
 import * as path from 'path';
-import * as readline from 'readline';
+import * as fs from 'fs';
+import { fileURLToPath } from 'url';
+import { findPkgRoot } from './pkg-root.js';
 
-const PKG_ROOT = path.resolve(__dirname, '..', '..');  // memoria (merged)
+const PKG_ROOT = findPkgRoot();
 const BUILT_IN_THEMES_DIR = path.join(PKG_ROOT, 'themes');
 
 // ── Types ────────────────────────────────────────────────────────────────
